@@ -7,7 +7,7 @@ locals {
       address_prefixes = ["10.30.0.0/22"]
     }
     "snet-aks-user" = {
-      address_prefixes = ["10.30.4.0/21"]
+      address_prefixes = ["10.30.16.0/21"]
     }
     "snet-app-gateway" = {
       address_prefixes = ["10.30.12.0/24"]
@@ -162,12 +162,14 @@ module "key_vault" {
 module "service_bus" {
   source = "../../modules/service-bus"
 
-  name                = local.names.service_bus
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
-  sku                 = var.service_bus_sku
-  queues              = ["review-jobs", "analysis-results"]
-  tags                = local.tags
+  name                         = local.names.service_bus
+  resource_group_name          = module.resource_group.name
+  location                     = module.resource_group.location
+  sku                          = var.service_bus_sku
+  capacity                     = var.service_bus_capacity
+  premium_messaging_partitions = var.service_bus_premium_messaging_partitions
+  queues                       = ["review-jobs", "analysis-results"]
+  tags                         = local.tags
 }
 
 module "postgresql" {

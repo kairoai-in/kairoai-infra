@@ -17,7 +17,9 @@ public_network_access_enabled = true
 postgres_version    = "16"
 postgres_sku_name   = "GP_Standard_D2s_v3"
 postgres_storage_mb = 131072
-service_bus_sku     = "Premium"
+service_bus_sku                          = "Premium"
+service_bus_capacity                     = 1
+service_bus_premium_messaging_partitions = 1
 
 aks_private_cluster_enabled = true
 aks_system_node_vm_size     = "Standard_D2s_v4"

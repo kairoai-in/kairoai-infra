@@ -1,6 +1,6 @@
 # Full Architecture Rollout Plan
 
-Last updated: `2026-06-22 23:20:23 +05:30`
+Last updated: `2026-06-22 23:59:48 +05:30`
 
 This document treats KairoAI infrastructure as one complete architecture, not as isolated resources. Terraform still applies in dependency-safe waves because Azure resources depend on each other across subscriptions, but each wave belongs to the same target design.
 
@@ -103,30 +103,30 @@ Users / GitHub
 
 | Layer | Resource | Planned Name | Status | Diagram Notes |
 | --- | --- | --- | --- | --- |
-| RG | Resource group | `rg-kairoai-prod-ci` | Planned | Production primary RG. |
-| Network | VNet | `vnet-kairoai-prod-ci` `10.30.0.0/16` | Planned | Peered with hub VNet. |
-| Network | AKS system subnet | `snet-aks-system` `10.30.0.0/22` | Planned | AKS system nodes. |
-| Network | AKS user subnet | `snet-aks-user` `10.30.4.0/21` | Planned | App workloads. |
-| Network | App Gateway subnet | `snet-app-gateway` `10.30.12.0/24` | Planned | Dedicated App Gateway WAF subnet. |
-| Network | Private endpoints subnet | `snet-private-endpoints` `10.30.13.0/24` | Planned | Private endpoints. |
-| Network | PostgreSQL delegated subnet | `snet-postgres-delegated` `10.30.14.0/24` | Planned | PostgreSQL Flexible Server. |
-| Network | Private jobs subnet | `snet-aci-private` `10.30.15.0/24` | Planned | Private jobs reserve. |
-| Peering | Hub-prod VNet peering | `peer-vnet-kairoai-prod-ci-to-vnet-kairoai-hub-ci` and reverse | Planned | Bidirectional hub-spoke peering. |
-| DNS | Private DNS links | `link-*-prod` | Planned | Links prod VNet to hub private DNS zones. |
+| RG | Resource group | `rg-kairoai-prod-ci` | Live | Production primary RG. |
+| Network | VNet | `vnet-kairoai-prod-ci` `10.30.0.0/16` | Live | Peered with hub VNet. |
+| Network | AKS system subnet | `snet-aks-system` `10.30.0.0/22` | Live | AKS system nodes. |
+| Network | AKS user subnet | `snet-aks-user` `10.30.16.0/21` | Live | App workloads. |
+| Network | App Gateway subnet | `snet-app-gateway` `10.30.12.0/24` | Live | Dedicated App Gateway WAF subnet. |
+| Network | Private endpoints subnet | `snet-private-endpoints` `10.30.13.0/24` | Live | Private endpoints. |
+| Network | PostgreSQL delegated subnet | `snet-postgres-delegated` `10.30.14.0/24` | Live | PostgreSQL Flexible Server. |
+| Network | Private jobs subnet | `snet-aci-private` `10.30.15.0/24` | Live | Private jobs reserve. |
+| Peering | Hub-prod VNet peering | `peer-vnet-kairoai-prod-ci-to-vnet-kairoai-hub-ci` and reverse | Live | Bidirectional hub-spoke peering. |
+| DNS | Private DNS links | `link-*-prod` | Live | Links prod VNet to hub private DNS zones. |
 | AKS | Cluster | `aks-kairoai-prod-ci` | Feature-gated | Private cluster, autoscaled pools. |
 | Edge | Public IP | `pip-kairoai-prod-ci` | Feature-gated | App Gateway frontend IP. |
 | Edge | Application Gateway WAF | `agw-kairoai-prod-ci` | Feature-gated | Regional WAF before AKS. |
 | Edge | WAF policy | `policy-agw-kairoai-prod-ci` | Feature-gated | OWASP managed rules. |
 | Edge | Front Door | `afd-kairoai-prod-ci` / `fde-kairoai-prod-ci` | Feature-gated | Routes `kairoai.in` and `api.kairoai.in`. |
-| Data | PostgreSQL Flexible Server | `psql-kairoai-prod-ci` | Planned | Production app database. |
-| Data | PostgreSQL database | `kairoai` | Planned | App database. |
-| Messaging | Service Bus namespace | `sb-kairoai-prod-ci` | Planned | Premium async messaging. |
-| Messaging | Service Bus queues | `review-jobs`, `analysis-results` | Planned | Review workflow queues. |
-| Secrets | Key Vault | `kv-kairoai-prod-ci` | Planned | Production runtime secrets. |
+| Data | PostgreSQL Flexible Server | `psql-kairoai-prod-ci` | Live | Production app database. |
+| Data | PostgreSQL database | `kairoai` | Live | App database. |
+| Messaging | Service Bus namespace | `sb-kairoai-prod-ci` | Live | Premium async messaging with capacity `1` and partition `1`. |
+| Messaging | Service Bus queues | `review-jobs`, `analysis-results` | Live | Review workflow queues. |
+| Secrets | Key Vault | `kv-kairoai-prod-ci` | Live | Production runtime secrets. |
 | AI | Azure AI Foundry / AI Services | `oai-kairoai-prod-ci` | Feature-gated | Production AI suggestions. |
-| Observability | Log Analytics | `law-kairoai-prod-ci` | Planned | Production logs. |
-| Observability | Application Insights | `appi-kairoai-prod-ci` | Planned | Production telemetry. |
-| Observability | Action group | `ag-kairoai-prod-platform` | Planned | Alert routing. |
+| Observability | Log Analytics | `law-kairoai-prod-ci` | Live | Production logs. |
+| Observability | Application Insights | `appi-kairoai-prod-ci` | Live | Production telemetry. |
+| Observability | Action group | `ag-kairoai-prod-platform` | Live | Alert routing. |
 | Governance | Managed identities | `id-*` | Feature-gated | Workload identity and GitHub OIDC. |
 | Governance | Azure Policy assignments | From `policy_assignments` | Feature-gated | Resource-group scoped guardrails. |
 
@@ -134,25 +134,25 @@ Users / GitHub
 
 | Layer | Resource | Planned Name | Status | Diagram Notes |
 | --- | --- | --- | --- | --- |
-| RG | Resource group | `rg-kairoai-prod-dr-si` | Planned | South India DR RG. |
-| Network | VNet | `vnet-kairoai-prod-dr-si` `10.40.0.0/16` | Planned | Peered with hub VNet. |
-| Network | AKS system subnet | `snet-aks-system` `10.40.0.0/22` | Planned | Warm standby reserve. |
-| Network | AKS user subnet | `snet-aks-user` `10.40.4.0/21` | Planned | Warm standby reserve. |
-| Network | App Gateway subnet | `snet-app-gateway` `10.40.12.0/24` | Planned | DR App Gateway reserve. |
-| Network | Private endpoints subnet | `snet-private-endpoints` `10.40.13.0/24` | Planned | DR private endpoints. |
-| Network | PostgreSQL delegated subnet | `snet-postgres-delegated` `10.40.14.0/24` | Planned | DR DB/failover reserve. |
-| Peering | Hub-DR VNet peering | `peer-vnet-kairoai-prod-dr-si-to-vnet-kairoai-hub-ci` and reverse | Planned | Bidirectional hub-spoke peering. |
-| DNS | Private DNS links | `link-*-prod-dr` | Planned | Links DR VNet to hub private DNS zones. |
+| RG | Resource group | `rg-kairoai-prod-dr-si` | Live | South India DR RG. |
+| Network | VNet | `vnet-kairoai-prod-dr-si` `10.40.0.0/16` | Live | Peered with hub VNet. |
+| Network | AKS system subnet | `snet-aks-system` `10.40.0.0/22` | Live | Warm standby reserve. |
+| Network | AKS user subnet | `snet-aks-user` `10.40.16.0/21` | Live | Warm standby reserve. |
+| Network | App Gateway subnet | `snet-app-gateway` `10.40.12.0/24` | Live | DR App Gateway reserve. |
+| Network | Private endpoints subnet | `snet-private-endpoints` `10.40.13.0/24` | Live | DR private endpoints. |
+| Network | PostgreSQL delegated subnet | `snet-postgres-delegated` `10.40.14.0/24` | Live | DR DB/failover reserve. |
+| Peering | Hub-DR VNet peering | `peer-vnet-kairoai-prod-dr-si-to-vnet-kairoai-hub-ci` and reverse | Live | Bidirectional hub-spoke peering. |
+| DNS | Private DNS links | `link-*-prod-dr` | Live | Links DR VNet to hub private DNS zones. |
 | AKS | Cluster | `aks-kairoai-prod-dr-si` | Feature-gated | Optional Level 3 warm standby. |
 | Edge | Public IP | `pip-kairoai-prod-dr-si` | Feature-gated | DR App Gateway frontend IP. |
 | Edge | Application Gateway WAF | `agw-kairoai-prod-dr-si` | Feature-gated | Optional DR WAF. |
 | Data | PostgreSQL Flexible Server | `psql-kairoai-prod-dr-si` | Feature-gated | Optional DR database/failover path. |
 | Messaging | Service Bus namespace | `sb-kairoai-prod-dr-si` | Feature-gated | Optional active-passive messaging. |
-| Secrets | Key Vault | `kv-kairoai-prod-dr-si` | Planned | DR secrets/recovery. |
+| Secrets | Key Vault | `kv-kairoai-prod-dr-si` | Live | DR secrets/recovery. |
 | AI | Azure AI Foundry / AI Services | `oai-kairoai-prod-dr-si` | Feature-gated | Optional DR AI endpoint. |
-| Observability | Log Analytics | `law-kairoai-prod-dr-si` | Planned | DR logs. |
-| Observability | Application Insights | `appi-kairoai-prod-dr-si` | Planned | DR telemetry. |
-| Observability | Action group | `ag-kairoai-prod-dr-platform` | Planned | DR alert routing. |
+| Observability | Log Analytics | `law-kairoai-prod-dr-si` | Live | DR logs. |
+| Observability | Application Insights | `appi-kairoai-prod-dr-si` | Live | DR telemetry. |
+| Observability | Action group | `ag-kairoai-prod-dr-platform` | Live | DR alert routing. |
 | Governance | Managed identities | `id-*` | Feature-gated | DR workload identities. |
 | Governance | Azure Policy assignments | From `policy_assignments` | Feature-gated | DR scoped guardrails. |
 
@@ -247,9 +247,9 @@ Reason:
 
 ### Wave 3 - Prod Primary
 
-Status: reusable module root implemented and saved plan generated. Not applied.
+Status: applied and verified with a no-change plan.
 
-Default plan creates the production foundation:
+Applied production foundation:
 
 - `rg-kairoai-prod-ci`
 - `vnet-kairoai-prod-ci`
@@ -277,11 +277,11 @@ Reason:
 
 ### Wave 4 - Prod DR
 
-Status: reusable module root implemented and saved plan generated. Not applied.
+Status: applied and verified with a no-change plan.
 
 Demo target: Level 2.
 
-Default plan creates the Level 2 DR foundation:
+Applied Level 2 DR foundation:
 
 - `rg-kairoai-prod-dr-si`
 - `vnet-kairoai-prod-dr-si`
@@ -328,18 +328,18 @@ Reason:
 | Layer | Hub | Test | Prod | Prod DR |
 | --- | --- | --- | --- | --- |
 | State | Live | Uses hub backend | Uses hub backend | Uses hub backend |
-| DNS | Public + private DNS live | Linked to hub private DNS | Planned links | Planned links |
-| Network | Hub VNet live | Spoke VNet live | Planned | Planned |
-| Peering | Hub-test live | Hub-test live | Planned hub-prod | Planned hub-prod-dr |
+| DNS | Public + private DNS live | Linked to hub private DNS | Live links | Live links |
+| Network | Hub VNet live | Spoke VNet live | Live | Live |
+| Peering | Hub-test live | Hub-test live | Live hub-prod | Live hub-prod-dr |
 | ACR | Live shared ACR | Pulls from hub ACR | Pulls from hub ACR | Pulls from hub ACR |
 | AKS | N/A | Live | Planned | Optional Level 3 |
 | App Gateway WAF | N/A | Live | Planned | Optional Level 3 |
 | Front Door | Planned global | Planned test route | Planned prod route | Planned failover route |
-| PostgreSQL | N/A | Live | Planned | Planned Level 2 |
-| Service Bus | N/A | Live | Planned | Optional DR namespace |
-| Key Vault | Live shared hub KV | Live | Planned | Planned recovery |
+| PostgreSQL | N/A | Live | Live | Feature-gated DR database/failover |
+| Service Bus | N/A | Live | Live | Feature-gated DR namespace |
+| Key Vault | Live shared hub KV | Live | Live | Live recovery foundation |
 | AI Foundry | N/A or shared future | Planned | Planned | Optional |
-| Monitoring | Hub LAW live | LAW/AppI/AMW/Grafana live | Planned | Planned |
+| Monitoring | Hub LAW live | LAW/AppI/AMW/Grafana live | LAW/AppI live | LAW/AppI live |
 | Managed identities | Planned | Planned | Planned | Planned |
 | Policy | Planned | Planned | Planned | Planned |
 
@@ -378,16 +378,16 @@ Saved plan status:
 | Root | Saved plan | Create | Update | Delete | Notes |
 | --- | --- | ---: | ---: | ---: | --- |
 | `hub` | `hub-full-architecture.tfplan` | 0 | 0 | 0 | Existing hub remains unchanged. |
-| `test` | `test-full-architecture.tfplan` | 3 | 0 | 0 | Adds App Gateway diagnostics and two edge health alerts. |
-| `prod` | `prod-full-architecture.tfplan` | 30 | 0 | 0 | Creates production foundation plus platform action group; AKS/App Gateway/Front Door/AI are gated off. |
-| `prod-dr` | `prod-dr-full-architecture.tfplan` | 22 | 0 | 0 | Creates Level 2 DR foundation plus platform action group; warm runtime is gated off. |
+| `test` | `test-full-architecture.tfplan` | 0 | 0 | 0 | Test observability is applied and clean. |
+| `prod` | `prod-full-architecture.tfplan` | 0 | 0 | 0 | Production foundation is applied and clean; AKS/App Gateway/Front Door/AI are gated off. |
+| `prod-dr` | `prod-dr-full-architecture.tfplan` | 0 | 0 | 0 | Level 2 DR foundation is applied and clean; warm runtime is gated off. |
 
 ## Immediate Next Implementation Step
 
-1. Review and apply the `test` App Gateway diagnostics/alerts plan.
-2. Review and apply `prod`, then `prod-dr`, if costs and resource list look good.
-3. Decide whether Front Door lives only in hub/global root or is composed from spoke roots using origin outputs.
-4. Wire Azure Policy definitions into assignment pipelines after test audit mode is confirmed.
+1. Decide whether Front Door lives only in hub/global root or is composed from spoke roots using origin outputs.
+2. Plan/apply production AKS and App Gateway WAF when ready to host workloads in prod.
+3. Wire Azure Policy definitions into assignment pipelines after test audit mode is confirmed.
+4. Add private endpoints and tighten public network access once application connectivity is validated.
 
 ## Safety Rules
 

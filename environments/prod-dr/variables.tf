@@ -130,6 +130,18 @@ variable "service_bus_sku" {
   default     = "Premium"
 }
 
+variable "service_bus_capacity" {
+  description = "Messaging unit capacity for Premium Service Bus namespaces."
+  type        = number
+  default     = 1
+}
+
+variable "service_bus_premium_messaging_partitions" {
+  description = "Premium messaging partitions for Premium Service Bus namespaces."
+  type        = number
+  default     = 1
+}
+
 variable "enable_aks" {
   description = "Create optional warm standby DR AKS."
   type        = bool

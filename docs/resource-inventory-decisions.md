@@ -1,6 +1,6 @@
 # Resource Inventory and Decisions
 
-Last updated: `2026-06-22 23:20:23 +05:30`
+Last updated: `2026-06-22 23:59:48 +05:30`
 
 This file is the practical inventory for where KairoAI Azure resources live, why they exist, and whether they are live or planned. The high-level architecture remains in `azure-hub-spoke-blueprint.md`; this file is the operator-friendly companion.
 
@@ -62,21 +62,21 @@ This file is the practical inventory for where KairoAI Azure resources live, why
 
 ## Prod and DR Subscription Resources
 
-Production resources are not created yet. The prod and prod-dr Terraform roots now reuse the same module pattern validated in test and have saved plans ready for review.
+Production and prod-dr foundation resources are now created and verified with no-change Terraform plans. AKS, App Gateway WAF, Front Door, AI Foundry, managed identities, and policy assignments remain feature-gated.
 
 | Scope | Planned Resources | Reason |
 | --- | --- | --- |
-| Prod primary | RG, VNet/subnets, hub peering, private DNS links, PostgreSQL Flexible Server, Key Vault, Service Bus, Monitor, Application Insights; optional gated AKS, App Gateway WAF, Front Door, AI Foundry, managed identities, and policy assignments | Production deployment in Central India with high-cost runtime gates reviewed before apply. |
-| Prod DR | DR RG, DR VNet/subnets, hub peering, private DNS links, Key Vault, monitoring; optional gated PostgreSQL, Service Bus, warm standby AKS, App Gateway WAF, AI Foundry, managed identities, and policy assignments | Demo target is DR Level 2 in South India, upgradeable without redesign. |
+| Prod primary | RG, VNet/subnets, hub peering, private DNS links, PostgreSQL Flexible Server, Key Vault, Service Bus, Monitor, Application Insights are live; optional gated AKS, App Gateway WAF, Front Door, AI Foundry, managed identities, and policy assignments remain planned | Production deployment in Central India with high-cost runtime gates reviewed before apply. |
+| Prod DR | DR RG, DR VNet/subnets, hub peering, private DNS links, Key Vault, monitoring are live; optional gated PostgreSQL, Service Bus, warm standby AKS, App Gateway WAF, AI Foundry, managed identities, and policy assignments remain planned | Demo target is DR Level 2 in South India, upgradeable without redesign. |
 
 ## Saved Architecture Plans
 
 | Root | Plan File | Result |
 | --- | --- | --- |
 | `environments/hub` | `hub-full-architecture.tfplan` | `0` create, `0` update, `0` delete. |
-| `environments/test` | `test-full-architecture.tfplan` | `3` create, `0` update, `0` delete. Adds App Gateway diagnostics and two edge alerts. |
-| `environments/prod` | `prod-full-architecture.tfplan` | `30` create, `0` update, `0` delete. Adds production foundation and platform action group. |
-| `environments/prod-dr` | `prod-dr-full-architecture.tfplan` | `22` create, `0` update, `0` delete. Adds Level 2 DR foundation and platform action group. |
+| `environments/test` | `test-full-architecture.tfplan` | `0` create, `0` update, `0` delete. Test observability is applied and clean. |
+| `environments/prod` | `prod-full-architecture.tfplan` | `0` create, `0` update, `0` delete. Production foundation is applied and clean. |
+| `environments/prod-dr` | `prod-dr-full-architecture.tfplan` | `0` create, `0` update, `0` delete. Level 2 DR foundation is applied and clean. |
 
 ## Key Decisions
 
@@ -90,3 +90,4 @@ Production resources are not created yet. The prod and prod-dr Terraform roots n
 - Use AKS autoscaling from day one.
 - Use `Standard_D2s_v4` for AKS node pools after Azure CLI SKU/quota checks showed B-series quota was unavailable in this subscription.
 - Required ingress path is `Internet -> Azure Front Door -> Application Gateway WAF -> AKS`.
+- Use Service Bus Premium capacity `1` and premium messaging partitions `1` for prod when Premium SKU is selected.

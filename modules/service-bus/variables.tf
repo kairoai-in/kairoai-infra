@@ -19,6 +19,18 @@ variable "sku" {
   default     = "Standard"
 }
 
+variable "capacity" {
+  description = "Messaging unit capacity for Premium Service Bus namespaces. Ignored for Standard."
+  type        = number
+  default     = 1
+}
+
+variable "premium_messaging_partitions" {
+  description = "Premium messaging partitions for Premium Service Bus namespaces."
+  type        = number
+  default     = 1
+}
+
 variable "queues" {
   description = "Queue names to create."
   type        = set(string)
