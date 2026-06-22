@@ -31,6 +31,7 @@ locals {
     "privatelink.postgres.database.azure.com",
     "privatelink.servicebus.windows.net",
     "privatelink.vaultcore.azure.net",
+    "private.postgres.database.azure.com",
   ])
 
   cost_deferred_resources = {
