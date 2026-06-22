@@ -1,27 +1,31 @@
 locals {
   region_code = "ci"
-
-  names = {
-    resource_group      = "rg-kairoai-test-ci"
-    vnet                = "vnet-kairoai-test-ci"
-    aks                 = "aks-kairoai-test-ci"
-    app_gateway         = "agw-kairoai-test-ci"
-    postgresql          = "psql-kairoai-test-ci"
-    key_vault           = "kv-kairoai-test-ci"
-    service_bus         = "sb-kairoai-test-ci"
-    app_insights        = "appi-kairoai-test-ci"
-    ai_foundry          = "oai-kairoai-test-ci"
-    front_door_host     = "test.kairoai.in"
-    front_door_api_host = "api.test.kairoai.in"
-  }
+  names       = module.naming.names
 
   subnets = {
-    "snet-aks-system"         = "10.20.0.0/22"
-    "snet-aks-user"           = "10.20.16.0/21"
-    "snet-app-gateway"        = "10.20.12.0/24"
-    "snet-private-endpoints"  = "10.20.13.0/24"
-    "snet-postgres-delegated" = "10.20.14.0/24"
-    "snet-aci-private"        = "10.20.15.0/24"
+    "snet-aks-system" = {
+      address_prefixes = ["10.20.0.0/22"]
+    }
+    "snet-aks-user" = {
+      address_prefixes = ["10.20.16.0/21"]
+    }
+    "snet-app-gateway" = {
+      address_prefixes = ["10.20.12.0/24"]
+    }
+    "snet-private-endpoints" = {
+      address_prefixes                  = ["10.20.13.0/24"]
+      private_endpoint_network_policies = "Disabled"
+    }
+    "snet-postgres-delegated" = {
+      address_prefixes           = ["10.20.14.0/24"]
+      service_endpoints          = ["Microsoft.Storage"]
+      delegation_name            = "dlg-postgresql-flexible-server"
+      delegation_service_name    = "Microsoft.DBforPostgreSQL/flexibleServers"
+      delegation_service_actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+    }
+    "snet-aci-private" = {
+      address_prefixes = ["10.20.15.0/24"]
+    }
   }
 
   hub_private_dns_zones_to_link = toset([
@@ -65,171 +69,117 @@ data "terraform_remote_state" "hub" {
   }
 }
 
-resource "azurerm_resource_group" "test" {
+module "naming" {
+  source = "../../modules/naming"
+
+  workload    = "kairoai"
+  environment = var.environment
+  region_code = local.region_code
+}
+
+module "resource_group" {
+  source = "../../modules/resource-group"
+
   name     = local.names.resource_group
   location = var.location
   tags     = local.tags
 }
 
-resource "azurerm_virtual_network" "test" {
+module "networking" {
+  source = "../../modules/networking"
+
   name                = local.names.vnet
-  resource_group_name = azurerm_resource_group.test.name
-  location            = azurerm_resource_group.test.location
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
   address_space       = [var.vnet_cidr]
+  subnets             = local.subnets
   tags                = local.tags
 }
 
-resource "azurerm_subnet" "test" {
-  for_each = local.subnets
+module "vnet_peering" {
+  source = "../../modules/vnet-peering"
 
-  name                 = each.key
-  resource_group_name  = azurerm_resource_group.test.name
-  virtual_network_name = azurerm_virtual_network.test.name
-  address_prefixes     = [each.value]
-
-  private_endpoint_network_policies = each.key == "snet-private-endpoints" ? "Disabled" : "Enabled"
-  service_endpoints                 = each.key == "snet-postgres-delegated" ? ["Microsoft.Storage"] : []
-
-  dynamic "delegation" {
-    for_each = each.key == "snet-postgres-delegated" ? [1] : []
-
-    content {
-      name = "dlg-postgresql-flexible-server"
-
-      service_delegation {
-        name    = "Microsoft.DBforPostgreSQL/flexibleServers"
-        actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
-      }
-    }
+  providers = {
+    azurerm.remote = azurerm.hub
   }
+
+  local_peering_name         = "peer-${local.names.vnet}-to-${data.terraform_remote_state.hub.outputs.names.vnet}"
+  remote_peering_name        = "peer-${data.terraform_remote_state.hub.outputs.names.vnet}-to-${local.names.vnet}"
+  local_resource_group_name  = module.resource_group.name
+  local_vnet_name            = module.networking.vnet_name
+  local_vnet_id              = module.networking.vnet_id
+  remote_resource_group_name = data.terraform_remote_state.hub.outputs.resource_group_name
+  remote_vnet_name           = data.terraform_remote_state.hub.outputs.names.vnet
+  remote_vnet_id             = data.terraform_remote_state.hub.outputs.vnet_id
 }
 
-resource "azurerm_virtual_network_peering" "test_to_hub" {
-  name                         = "peer-${local.names.vnet}-to-${data.terraform_remote_state.hub.outputs.names.vnet}"
-  resource_group_name          = azurerm_resource_group.test.name
-  virtual_network_name         = azurerm_virtual_network.test.name
-  remote_virtual_network_id    = data.terraform_remote_state.hub.outputs.vnet_id
-  allow_virtual_network_access = true
-  allow_forwarded_traffic      = true
-}
+module "private_dns_links" {
+  source = "../../modules/private-dns"
 
-resource "azurerm_virtual_network_peering" "hub_to_test" {
-  provider = azurerm.hub
+  providers = {
+    azurerm = azurerm.hub
+  }
 
-  name                         = "peer-${data.terraform_remote_state.hub.outputs.names.vnet}-to-${local.names.vnet}"
-  resource_group_name          = data.terraform_remote_state.hub.outputs.resource_group_name
-  virtual_network_name         = data.terraform_remote_state.hub.outputs.names.vnet
-  remote_virtual_network_id    = azurerm_virtual_network.test.id
-  allow_virtual_network_access = true
-  allow_forwarded_traffic      = true
-}
-
-resource "azurerm_private_dns_zone_virtual_network_link" "test" {
-  provider = azurerm.hub
-  for_each = local.hub_private_dns_zones_to_link
-
-  name                  = "link-${replace(each.key, ".", "-")}-test"
-  resource_group_name   = data.terraform_remote_state.hub.outputs.resource_group_name
-  private_dns_zone_name = each.value
-  virtual_network_id    = azurerm_virtual_network.test.id
-  registration_enabled  = false
-  tags                  = local.tags
-}
-
-resource "azurerm_log_analytics_workspace" "test" {
-  name                = "law-kairoai-test-ci"
-  resource_group_name = azurerm_resource_group.test.name
-  location            = azurerm_resource_group.test.location
-  sku                 = "PerGB2018"
-  retention_in_days   = var.log_retention_days
+  zone_names          = local.hub_private_dns_zones_to_link
+  resource_group_name = data.terraform_remote_state.hub.outputs.resource_group_name
+  virtual_network_id  = module.networking.vnet_id
+  link_name_prefix    = "link"
+  link_name_suffix    = "-test"
   tags                = local.tags
 }
 
-resource "azurerm_application_insights" "test" {
-  name                = local.names.app_insights
-  resource_group_name = azurerm_resource_group.test.name
-  location            = azurerm_resource_group.test.location
-  workspace_id        = azurerm_log_analytics_workspace.test.id
-  application_type    = "web"
-  tags                = local.tags
+module "monitor" {
+  source = "../../modules/monitor"
+
+  log_analytics_name        = local.names.log_analytics
+  application_insights_name = local.names.app_insights
+  resource_group_name       = module.resource_group.name
+  location                  = module.resource_group.location
+  retention_in_days         = var.log_retention_days
+  tags                      = local.tags
 }
 
-resource "azurerm_key_vault" "test" {
+module "key_vault" {
+  source = "../../modules/key-vault"
+
   name                          = local.names.key_vault
-  resource_group_name           = azurerm_resource_group.test.name
-  location                      = azurerm_resource_group.test.location
+  resource_group_name           = module.resource_group.name
+  location                      = module.resource_group.location
   tenant_id                     = var.tenant_id
-  sku_name                      = "standard"
-  enable_rbac_authorization     = true
+  admin_principal_id            = data.azurerm_client_config.current.object_id
   purge_protection_enabled      = var.key_vault_purge_protection_enabled
   soft_delete_retention_days    = var.key_vault_soft_delete_retention_days
   public_network_access_enabled = var.public_network_access_enabled
   tags                          = local.tags
 }
 
-resource "azurerm_role_assignment" "test_key_vault_admin" {
-  scope                = azurerm_key_vault.test.id
-  role_definition_name = "Key Vault Administrator"
-  principal_id         = data.azurerm_client_config.current.object_id
-}
+module "service_bus" {
+  source = "../../modules/service-bus"
 
-resource "azurerm_servicebus_namespace" "test" {
   name                = local.names.service_bus
-  resource_group_name = azurerm_resource_group.test.name
-  location            = azurerm_resource_group.test.location
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
   sku                 = var.service_bus_sku
+  queues              = ["review-jobs", "analysis-results"]
   tags                = local.tags
 }
 
-resource "azurerm_servicebus_queue" "review_jobs" {
-  name         = "review-jobs"
-  namespace_id = azurerm_servicebus_namespace.test.id
-}
+module "postgresql" {
+  source = "../../modules/postgresql-flexible"
 
-resource "azurerm_servicebus_queue" "analysis_results" {
-  name         = "analysis-results"
-  namespace_id = azurerm_servicebus_namespace.test.id
-}
-
-resource "random_password" "postgres_admin" {
-  length           = 32
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
-
-resource "azurerm_postgresql_flexible_server" "test" {
-  name                          = local.names.postgresql
-  resource_group_name           = azurerm_resource_group.test.name
-  location                      = azurerm_resource_group.test.location
-  version                       = var.postgres_version
-  delegated_subnet_id           = azurerm_subnet.test["snet-postgres-delegated"].id
-  private_dns_zone_id           = data.terraform_remote_state.hub.outputs.private_dns_zone_ids["private.postgres.database.azure.com"]
-  public_network_access_enabled = false
-  administrator_login           = "kairoaiadmin"
-  administrator_password        = random_password.postgres_admin.result
-  sku_name                      = var.postgres_sku_name
-  storage_mb                    = var.postgres_storage_mb
-  zone                          = "1"
-  tags                          = local.tags
+  name                = local.names.postgresql
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
+  server_version      = var.postgres_version
+  delegated_subnet_id = module.networking.subnet_ids["snet-postgres-delegated"]
+  private_dns_zone_id = data.terraform_remote_state.hub.outputs.private_dns_zone_ids["private.postgres.database.azure.com"]
+  sku_name            = var.postgres_sku_name
+  storage_mb          = var.postgres_storage_mb
+  key_vault_id        = module.key_vault.id
+  tags                = local.tags
 
   depends_on = [
-    azurerm_private_dns_zone_virtual_network_link.test,
-  ]
-}
-
-resource "azurerm_postgresql_flexible_server_database" "app" {
-  name      = "kairoai"
-  server_id = azurerm_postgresql_flexible_server.test.id
-  collation = "en_US.utf8"
-  charset   = "UTF8"
-}
-
-resource "azurerm_key_vault_secret" "postgres_admin_password" {
-  name         = "postgres-admin-password"
-  value        = random_password.postgres_admin.result
-  key_vault_id = azurerm_key_vault.test.id
-
-  depends_on = [
-    azurerm_role_assignment.test_key_vault_admin,
+    module.private_dns_links,
+    module.key_vault,
   ]
 }

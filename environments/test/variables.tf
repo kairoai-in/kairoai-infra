@@ -111,3 +111,63 @@ variable "service_bus_sku" {
   type        = string
   default     = "Standard"
 }
+
+variable "aks_kubernetes_version" {
+  description = "AKS Kubernetes version. Null lets Azure choose the default stable version."
+  type        = string
+  default     = null
+}
+
+variable "aks_system_node_min_count" {
+  description = "Minimum node count for the autoscaled AKS system node pool."
+  type        = number
+  default     = 1
+}
+
+variable "aks_system_node_max_count" {
+  description = "Maximum node count for the autoscaled AKS system node pool."
+  type        = number
+  default     = 2
+}
+
+variable "aks_system_node_vm_size" {
+  description = "VM size for the AKS system node pool."
+  type        = string
+  default     = "Standard_D2s_v4"
+}
+
+variable "aks_user_node_min_count" {
+  description = "Minimum node count for the autoscaled AKS user node pool."
+  type        = number
+  default     = 1
+}
+
+variable "aks_user_node_max_count" {
+  description = "Maximum node count for the autoscaled AKS user node pool."
+  type        = number
+  default     = 3
+}
+
+variable "aks_user_node_vm_size" {
+  description = "VM size for the AKS user node pool."
+  type        = string
+  default     = "Standard_D2s_v4"
+}
+
+variable "aks_private_cluster_enabled" {
+  description = "Enable a private AKS API endpoint."
+  type        = bool
+  default     = true
+}
+
+variable "grafana_public_network_access_enabled" {
+  description = "Allow public access to Azure Managed Grafana during the test bootstrap phase."
+  type        = bool
+  default     = true
+}
+
+variable "alert_email" {
+  description = "Optional email receiver for Azure Monitor alerts. Leave empty to create the action group without email receivers."
+  type        = string
+  default     = ""
+}
