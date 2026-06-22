@@ -220,14 +220,16 @@ module "app_gateway_waf" {
   source = "../../modules/app-gateway-waf"
   count  = var.enable_app_gateway_waf ? 1 : 0
 
-  name                = local.names.app_gateway
-  public_ip_name      = local.names.public_ip
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
-  subnet_id           = module.networking.subnet_ids["snet-app-gateway"]
-  min_capacity        = var.app_gateway_min_capacity
-  max_capacity        = var.app_gateway_max_capacity
-  tags                = local.tags
+  name                       = local.names.app_gateway
+  public_ip_name             = local.names.public_ip
+  resource_group_name        = module.resource_group.name
+  location                   = module.resource_group.location
+  subnet_id                  = module.networking.subnet_ids["snet-app-gateway"]
+  min_capacity               = var.app_gateway_min_capacity
+  max_capacity               = var.app_gateway_max_capacity
+  log_analytics_workspace_id = module.monitor.log_analytics_workspace_id
+  action_group_id            = azurerm_monitor_action_group.platform.id
+  tags                       = local.tags
 }
 
 module "ai_foundry" {

@@ -65,3 +65,75 @@ resource "azurerm_cdn_frontdoor_route" "this" {
 
   link_to_default_domain = true
 }
+
+resource "azurerm_monitor_diagnostic_setting" "this" {
+  count = var.log_analytics_workspace_id == null ? 0 : 1
+
+  name                       = "diag-${var.profile_name}"
+  target_resource_id         = azurerm_cdn_frontdoor_profile.this.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  dynamic "enabled_log" {
+    for_each = var.diagnostic_log_categories
+
+    content {
+      category = enabled_log.value
+    }
+  }
+
+  enabled_metric {
+    category = "AllMetrics"
+  }
+}
+
+resource "azurerm_monitor_metric_alert" "origin_health_low" {
+  count = var.action_group_id == null ? 0 : 1
+
+  name                = "alert-${var.profile_name}-origin-health-low"
+  resource_group_name = var.resource_group_name
+  scopes              = [azurerm_cdn_frontdoor_profile.this.id]
+  description         = "Front Door origin health is below the configured threshold."
+  severity            = 1
+  frequency           = "PT5M"
+  window_size         = "PT15M"
+  enabled             = true
+  tags                = var.tags
+
+  criteria {
+    metric_namespace = "Microsoft.Cdn/profiles"
+    metric_name      = "OriginHealthPercentage"
+    aggregation      = "Average"
+    operator         = "LessThan"
+    threshold        = var.origin_health_threshold
+  }
+
+  action {
+    action_group_id = var.action_group_id
+  }
+}
+
+resource "azurerm_monitor_metric_alert" "latency_high" {
+  count = var.action_group_id == null ? 0 : 1
+
+  name                = "alert-${var.profile_name}-latency-high"
+  resource_group_name = var.resource_group_name
+  scopes              = [azurerm_cdn_frontdoor_profile.this.id]
+  description         = "Front Door total latency is above the configured threshold."
+  severity            = 2
+  frequency           = "PT5M"
+  window_size         = "PT15M"
+  enabled             = true
+  tags                = var.tags
+
+  criteria {
+    metric_namespace = "Microsoft.Cdn/profiles"
+    metric_name      = "TotalLatency"
+    aggregation      = "Average"
+    operator         = "GreaterThan"
+    threshold        = var.latency_threshold_ms
+  }
+
+  action {
+    action_group_id = var.action_group_id
+  }
+}

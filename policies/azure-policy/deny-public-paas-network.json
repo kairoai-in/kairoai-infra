@@ -1,0 +1,69 @@
+{
+  "properties": {
+    "displayName": "KairoAI - deny public PaaS network access",
+    "description": "Deny public network access on supported PaaS resources after private networking is enabled.",
+    "mode": "Indexed",
+    "metadata": {
+      "category": "KairoAI"
+    },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Effect"
+        },
+        "allowedValues": [
+          "Audit",
+          "Deny",
+          "Disabled"
+        ],
+        "defaultValue": "Audit"
+      }
+    },
+    "policyRule": {
+      "if": {
+        "anyOf": [
+          {
+            "allOf": [
+              {
+                "field": "type",
+                "equals": "Microsoft.KeyVault/vaults"
+              },
+              {
+                "field": "Microsoft.KeyVault/vaults/publicNetworkAccess",
+                "equals": "Enabled"
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "field": "type",
+                "equals": "Microsoft.ServiceBus/namespaces"
+              },
+              {
+                "field": "Microsoft.ServiceBus/namespaces/publicNetworkAccess",
+                "equals": "Enabled"
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "field": "type",
+                "equals": "Microsoft.CognitiveServices/accounts"
+              },
+              {
+                "field": "Microsoft.CognitiveServices/accounts/publicNetworkAccess",
+                "equals": "Enabled"
+              }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

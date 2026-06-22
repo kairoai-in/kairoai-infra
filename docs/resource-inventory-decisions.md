@@ -1,6 +1,6 @@
 # Resource Inventory and Decisions
 
-Last updated: `2026-06-22 23:06:29 +05:30`
+Last updated: `2026-06-22 23:20:23 +05:30`
 
 This file is the practical inventory for where KairoAI Azure resources live, why they exist, and whether they are live or planned. The high-level architecture remains in `azure-hub-spoke-blueprint.md`; this file is the operator-friendly companion.
 
@@ -74,9 +74,9 @@ Production resources are not created yet. The prod and prod-dr Terraform roots n
 | Root | Plan File | Result |
 | --- | --- | --- |
 | `environments/hub` | `hub-full-architecture.tfplan` | `0` create, `0` update, `0` delete. |
-| `environments/test` | `test-full-architecture.tfplan` | `0` create, `0` update, `0` delete. |
-| `environments/prod` | `prod-full-architecture.tfplan` | `29` create, `0` update, `0` delete. |
-| `environments/prod-dr` | `prod-dr-full-architecture.tfplan` | `21` create, `0` update, `0` delete. |
+| `environments/test` | `test-full-architecture.tfplan` | `3` create, `0` update, `0` delete. Adds App Gateway diagnostics and two edge alerts. |
+| `environments/prod` | `prod-full-architecture.tfplan` | `30` create, `0` update, `0` delete. Adds production foundation and platform action group. |
+| `environments/prod-dr` | `prod-dr-full-architecture.tfplan` | `22` create, `0` update, `0` delete. Adds Level 2 DR foundation and platform action group. |
 
 ## Key Decisions
 

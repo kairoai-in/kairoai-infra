@@ -11,6 +11,7 @@ hub_state_container_name       = "hubtfstate"
 hub_state_key                  = "kairoai/hub/terraform.tfstate"
 
 log_retention_days            = 90
+alert_email                   = ""
 public_network_access_enabled = true
 
 postgres_version    = "16"

@@ -2,27 +2,31 @@ module "app_gateway_waf" {
   source = "../../modules/app-gateway-waf"
   count  = var.enable_app_gateway_waf ? 1 : 0
 
-  name                = local.names.app_gateway
-  public_ip_name      = local.names.public_ip
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
-  subnet_id           = module.networking.subnet_ids["snet-app-gateway"]
-  min_capacity        = var.app_gateway_min_capacity
-  max_capacity        = var.app_gateway_max_capacity
-  tags                = local.tags
+  name                       = local.names.app_gateway
+  public_ip_name             = local.names.public_ip
+  resource_group_name        = module.resource_group.name
+  location                   = module.resource_group.location
+  subnet_id                  = module.networking.subnet_ids["snet-app-gateway"]
+  min_capacity               = var.app_gateway_min_capacity
+  max_capacity               = var.app_gateway_max_capacity
+  log_analytics_workspace_id = module.monitor.log_analytics_workspace_id
+  action_group_id            = azurerm_monitor_action_group.platform.id
+  tags                       = local.tags
 }
 
 module "front_door" {
   source = "../../modules/front-door"
   count  = var.enable_front_door ? 1 : 0
 
-  profile_name        = local.names.front_door_profile
-  endpoint_name       = local.names.front_door_endpoint
-  resource_group_name = module.resource_group.name
-  sku_name            = var.front_door_sku_name
-  origin_host_name    = module.app_gateway_waf[0].public_ip_address
-  origin_host_header  = local.names.front_door_host
-  tags                = local.tags
+  profile_name               = local.names.front_door_profile
+  endpoint_name              = local.names.front_door_endpoint
+  resource_group_name        = module.resource_group.name
+  sku_name                   = var.front_door_sku_name
+  origin_host_name           = module.app_gateway_waf[0].public_ip_address
+  origin_host_header         = local.names.front_door_host
+  log_analytics_workspace_id = module.monitor.log_analytics_workspace_id
+  action_group_id            = azurerm_monitor_action_group.platform.id
+  tags                       = local.tags
 
   depends_on = [
     module.app_gateway_waf,

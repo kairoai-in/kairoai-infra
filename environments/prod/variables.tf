@@ -70,6 +70,12 @@ variable "log_retention_days" {
   default     = 90
 }
 
+variable "alert_email" {
+  description = "Optional email receiver for Azure Monitor alerts. Leave empty to create the action group without email receivers."
+  type        = string
+  default     = ""
+}
+
 variable "key_vault_purge_protection_enabled" {
   description = "Enable purge protection for the production Key Vault."
   type        = bool

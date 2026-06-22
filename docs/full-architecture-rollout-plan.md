@@ -1,6 +1,6 @@
 # Full Architecture Rollout Plan
 
-Last updated: `2026-06-22 23:06:29 +05:30`
+Last updated: `2026-06-22 23:20:23 +05:30`
 
 This document treats KairoAI infrastructure as one complete architecture, not as isolated resources. Terraform still applies in dependency-safe waves because Azure resources depend on each other across subscriptions, but each wave belongs to the same target design.
 
@@ -26,6 +26,149 @@ Internet
 | Test spoke | Test VNet, AKS, App Gateway WAF, PostgreSQL, Key Vault, Service Bus, monitoring, AI Foundry test, workload identities, policy assignments | End-to-end validation before production. |
 | Prod spoke | Production VNet, foundation subnets, PostgreSQL, Key Vault, Service Bus, monitoring, optional AKS/App Gateway WAF/Front Door/AI/workload identities/policy gates | Production runtime in Central India. |
 | Prod DR | DR VNet, Key Vault recovery, DR observability, optional database/failover and warm standby AKS/App Gateway | Level 2 demo DR in South India, upgradeable to Level 3. |
+
+## Diagram Resource Inventory
+
+Use this section as the source for an architecture diagram. The recommended visual grouping is by subscription boundary first, then by resource group, VNet, and subnet.
+
+### Global Flow
+
+```text
+Users / GitHub
+  -> Azure DNS zone kairoai.in
+  -> Azure Front Door Premium
+  -> Application Gateway WAF v2
+  -> AKS ingress / AGIC
+  -> KairoAI services
+  -> Azure PostgreSQL Flexible Server
+  -> Azure Service Bus queues
+  -> Azure AI Foundry / Azure AI Services
+  -> Azure Monitor / Log Analytics / Application Insights / Managed Grafana
+```
+
+### Hub Subscription - `kairoai-hub-subscription`
+
+| Layer | Resource | Planned Name | Status | Diagram Notes |
+| --- | --- | --- | --- | --- |
+| State | Resource group | `rg-kairoai-tfstate-ci` | Live | Draw as shared Terraform backend control-plane RG. |
+| State | Storage account | `stkairoaitfstateci` | Live | Secure remote state storage. |
+| State | Blob containers | `hubtfstate`, `testtfstate`, `prodtfstate` | Live | One container per environment family. |
+| Shared RG | Resource group | `rg-kairoai-hub-ci` | Live | Hub shared services RG. |
+| Network | VNet | `vnet-kairoai-hub-ci` `10.10.0.0/16` | Live | Center of hub-spoke diagram. |
+| DNS | Public DNS zone | `kairoai.in` | Live | GoDaddy delegates records/nameservers as needed. |
+| DNS | Private DNS zones | `private.postgres.database.azure.com`, `privatelink.azurecr.io`, `privatelink.blob.core.windows.net`, `privatelink.monitor.azure.com`, `privatelink.ods.opinsights.azure.com`, `privatelink.postgres.database.azure.com`, `privatelink.servicebus.windows.net`, `privatelink.vaultcore.azure.net` | Live | Link each spoke VNet to these zones. |
+| Registry | Azure Container Registry | `acrkairoaihubci` | Live | Shared image registry for test/prod/prod-dr. |
+| Secrets | Key Vault | `kv-kairoai-hub-ci` | Live | Shared hub secrets/certs where appropriate. |
+| Observability | Log Analytics | `law-kairoai-hub-ci` | Live | Hub control-plane logs. |
+| Edge | Azure Front Door Premium | `afd-kairoai-*-*` / endpoints `fde-kairoai-*-*` | Planned | Global public entry before regional App Gateway. |
+| Security | Azure Firewall | TBD | Deferred | Add if budget allows centralized egress/inspection. |
+| Operations | Azure Bastion | TBD | Deferred | Add if private operations require browser SSH/RDP. |
+
+### Test Spoke - `kairoai-test-subscription`
+
+| Layer | Resource | Planned Name | Status | Diagram Notes |
+| --- | --- | --- | --- | --- |
+| RG | Resource group | `rg-kairoai-test-ci` | Live | Single test runtime RG. |
+| Network | VNet | `vnet-kairoai-test-ci` `10.20.0.0/16` | Live | Peered with hub VNet. |
+| Network | AKS system subnet | `snet-aks-system` `10.20.0.0/22` | Live | AKS system node pool. |
+| Network | AKS user subnet | `snet-aks-user` `10.20.16.0/21` | Live | App workloads. |
+| Network | App Gateway subnet | `snet-app-gateway` `10.20.12.0/24` | Live | Dedicated Application Gateway subnet. |
+| Network | Private endpoints subnet | `snet-private-endpoints` `10.20.13.0/24` | Live | Future private endpoints. |
+| Network | PostgreSQL delegated subnet | `snet-postgres-delegated` `10.20.14.0/24` | Live | PostgreSQL Flexible Server VNet injection. |
+| Network | Private jobs subnet | `snet-aci-private` `10.20.15.0/24` | Live | Private job/container execution reserve. |
+| Peering | Hub-test VNet peering | `peer-vnet-kairoai-test-ci-to-vnet-kairoai-hub-ci` and reverse | Live | Bidirectional hub-spoke peering. |
+| DNS | Private DNS links | `link-*-test` | Live | Links test VNet to hub private DNS zones. |
+| AKS | Cluster | `aks-kairoai-test-ci` | Live | Private cluster with autoscaled system/user pools. |
+| Edge | Public IP | `pip-kairoai-test-ci` | Live | App Gateway frontend IP. |
+| Edge | Application Gateway WAF | `agw-kairoai-test-ci` | Live | Regional WAF before AKS. |
+| Edge | WAF policy | `policy-agw-kairoai-test-ci` | Live | OWASP managed rules in Prevention mode. |
+| Edge | Front Door | `afd-kairoai-test-ci` | Planned | Route `test.kairoai.in` and `api.test.kairoai.in`. |
+| Data | PostgreSQL Flexible Server | `psql-kairoai-test-ci` | Live | Private database server. |
+| Data | PostgreSQL database | `kairoai` | Live | App database. |
+| Messaging | Service Bus namespace | `sb-kairoai-test-ci` | Live | Async app messaging. |
+| Messaging | Service Bus queues | `review-jobs`, `analysis-results` | Live | Review workflow queues. |
+| Secrets | Key Vault | `kv-kairoai-test-ci` | Live | Test runtime secrets. |
+| AI | Azure AI Foundry / AI Services | `oai-kairoai-test-ci` | Planned | AI suggestions and explanations. |
+| Observability | Log Analytics | `law-kairoai-test-ci` | Live | Test logs. |
+| Observability | Application Insights | `appi-kairoai-test-ci` | Live | App telemetry. |
+| Observability | Azure Monitor workspace | `amw-kairoai-test-ci` | Live | Managed Prometheus metrics. |
+| Observability | Managed Grafana | `amg-kairoai-test-ci` | Live | Dashboards. |
+| Observability | Action group | `ag-kairoai-test-platform` | Live | Alert routing. |
+| Observability | App Gateway diagnostic setting | `diag-agw-kairoai-test-ci` | Planned | Sends access, performance, firewall logs, and metrics to Log Analytics. |
+| Observability | App Gateway alerts | `alert-agw-kairoai-test-ci-unhealthy-hosts`, `alert-agw-kairoai-test-ci-failed-requests` | Planned | Regional edge health alerts. |
+| Governance | Managed identities | `id-*` | Planned | Workload identity and GitHub OIDC. |
+| Governance | Azure Policy assignments | From `policy_assignments` | Planned | Resource-group scoped guardrails. |
+
+### Prod Spoke - `kairoai-prod-subscription`
+
+| Layer | Resource | Planned Name | Status | Diagram Notes |
+| --- | --- | --- | --- | --- |
+| RG | Resource group | `rg-kairoai-prod-ci` | Planned | Production primary RG. |
+| Network | VNet | `vnet-kairoai-prod-ci` `10.30.0.0/16` | Planned | Peered with hub VNet. |
+| Network | AKS system subnet | `snet-aks-system` `10.30.0.0/22` | Planned | AKS system nodes. |
+| Network | AKS user subnet | `snet-aks-user` `10.30.4.0/21` | Planned | App workloads. |
+| Network | App Gateway subnet | `snet-app-gateway` `10.30.12.0/24` | Planned | Dedicated App Gateway WAF subnet. |
+| Network | Private endpoints subnet | `snet-private-endpoints` `10.30.13.0/24` | Planned | Private endpoints. |
+| Network | PostgreSQL delegated subnet | `snet-postgres-delegated` `10.30.14.0/24` | Planned | PostgreSQL Flexible Server. |
+| Network | Private jobs subnet | `snet-aci-private` `10.30.15.0/24` | Planned | Private jobs reserve. |
+| Peering | Hub-prod VNet peering | `peer-vnet-kairoai-prod-ci-to-vnet-kairoai-hub-ci` and reverse | Planned | Bidirectional hub-spoke peering. |
+| DNS | Private DNS links | `link-*-prod` | Planned | Links prod VNet to hub private DNS zones. |
+| AKS | Cluster | `aks-kairoai-prod-ci` | Feature-gated | Private cluster, autoscaled pools. |
+| Edge | Public IP | `pip-kairoai-prod-ci` | Feature-gated | App Gateway frontend IP. |
+| Edge | Application Gateway WAF | `agw-kairoai-prod-ci` | Feature-gated | Regional WAF before AKS. |
+| Edge | WAF policy | `policy-agw-kairoai-prod-ci` | Feature-gated | OWASP managed rules. |
+| Edge | Front Door | `afd-kairoai-prod-ci` / `fde-kairoai-prod-ci` | Feature-gated | Routes `kairoai.in` and `api.kairoai.in`. |
+| Data | PostgreSQL Flexible Server | `psql-kairoai-prod-ci` | Planned | Production app database. |
+| Data | PostgreSQL database | `kairoai` | Planned | App database. |
+| Messaging | Service Bus namespace | `sb-kairoai-prod-ci` | Planned | Premium async messaging. |
+| Messaging | Service Bus queues | `review-jobs`, `analysis-results` | Planned | Review workflow queues. |
+| Secrets | Key Vault | `kv-kairoai-prod-ci` | Planned | Production runtime secrets. |
+| AI | Azure AI Foundry / AI Services | `oai-kairoai-prod-ci` | Feature-gated | Production AI suggestions. |
+| Observability | Log Analytics | `law-kairoai-prod-ci` | Planned | Production logs. |
+| Observability | Application Insights | `appi-kairoai-prod-ci` | Planned | Production telemetry. |
+| Observability | Action group | `ag-kairoai-prod-platform` | Planned | Alert routing. |
+| Governance | Managed identities | `id-*` | Feature-gated | Workload identity and GitHub OIDC. |
+| Governance | Azure Policy assignments | From `policy_assignments` | Feature-gated | Resource-group scoped guardrails. |
+
+### Prod DR - `kairoai-prod-subscription`
+
+| Layer | Resource | Planned Name | Status | Diagram Notes |
+| --- | --- | --- | --- | --- |
+| RG | Resource group | `rg-kairoai-prod-dr-si` | Planned | South India DR RG. |
+| Network | VNet | `vnet-kairoai-prod-dr-si` `10.40.0.0/16` | Planned | Peered with hub VNet. |
+| Network | AKS system subnet | `snet-aks-system` `10.40.0.0/22` | Planned | Warm standby reserve. |
+| Network | AKS user subnet | `snet-aks-user` `10.40.4.0/21` | Planned | Warm standby reserve. |
+| Network | App Gateway subnet | `snet-app-gateway` `10.40.12.0/24` | Planned | DR App Gateway reserve. |
+| Network | Private endpoints subnet | `snet-private-endpoints` `10.40.13.0/24` | Planned | DR private endpoints. |
+| Network | PostgreSQL delegated subnet | `snet-postgres-delegated` `10.40.14.0/24` | Planned | DR DB/failover reserve. |
+| Peering | Hub-DR VNet peering | `peer-vnet-kairoai-prod-dr-si-to-vnet-kairoai-hub-ci` and reverse | Planned | Bidirectional hub-spoke peering. |
+| DNS | Private DNS links | `link-*-prod-dr` | Planned | Links DR VNet to hub private DNS zones. |
+| AKS | Cluster | `aks-kairoai-prod-dr-si` | Feature-gated | Optional Level 3 warm standby. |
+| Edge | Public IP | `pip-kairoai-prod-dr-si` | Feature-gated | DR App Gateway frontend IP. |
+| Edge | Application Gateway WAF | `agw-kairoai-prod-dr-si` | Feature-gated | Optional DR WAF. |
+| Data | PostgreSQL Flexible Server | `psql-kairoai-prod-dr-si` | Feature-gated | Optional DR database/failover path. |
+| Messaging | Service Bus namespace | `sb-kairoai-prod-dr-si` | Feature-gated | Optional active-passive messaging. |
+| Secrets | Key Vault | `kv-kairoai-prod-dr-si` | Planned | DR secrets/recovery. |
+| AI | Azure AI Foundry / AI Services | `oai-kairoai-prod-dr-si` | Feature-gated | Optional DR AI endpoint. |
+| Observability | Log Analytics | `law-kairoai-prod-dr-si` | Planned | DR logs. |
+| Observability | Application Insights | `appi-kairoai-prod-dr-si` | Planned | DR telemetry. |
+| Observability | Action group | `ag-kairoai-prod-dr-platform` | Planned | DR alert routing. |
+| Governance | Managed identities | `id-*` | Feature-gated | DR workload identities. |
+| Governance | Azure Policy assignments | From `policy_assignments` | Feature-gated | DR scoped guardrails. |
+
+### Application Services on AKS
+
+| Service | Runtime Placement | Image Source | Primary Dependencies |
+| --- | --- | --- | --- |
+| `kairoai-dashboard` | AKS user node pool | Hub ACR | API Gateway, GitHub OAuth/App install flow. |
+| `kairoai-api-gateway` | AKS user node pool | Hub ACR | Review orchestrator, auth/session config. |
+| `kairoai-github-service` | AKS user node pool | Hub ACR | GitHub App credentials, GitHub API. |
+| `kairoai-review-orchestrator` | AKS user node pool | Hub ACR | PostgreSQL, Service Bus, Terraform/security/cost/governance services. |
+| `kairoai-terraform-runner` | AKS user node pool or private jobs subnet pattern | Hub ACR | Terraform CLI/workspace execution. |
+| `kairoai-security-service` | AKS user node pool | Hub ACR | Checkov security scanning. |
+| `kairoai-cost-service` | AKS user node pool | Hub ACR | Cost analysis engine. |
+| `kairoai-governance-service` | AKS user node pool | Hub ACR | Policy/governance checks. |
+| `kairoai-ai-service` | AKS user node pool | Hub ACR | Azure AI Foundry / Azure AI Services. |
 
 ## Rollout Waves
 
@@ -226,23 +369,25 @@ Completed in code:
 1. Refactored `prod` and `prod-dr` roots to use the same reusable modules as `test`.
 2. Added shared environment variables for feature gates and SKU choices.
 3. Added backend configuration for `prod` and `prod-dr` in the hub `prodtfstate` container.
-4. Ran a combined validation and saved-plan pass across all roots.
+4. Added reusable App Gateway and Front Door diagnostics/alerts.
+5. Added Azure Policy definition files and OPA/Conftest checks.
+6. Ran a combined validation and saved-plan pass across all roots.
 
 Saved plan status:
 
 | Root | Saved plan | Create | Update | Delete | Notes |
 | --- | --- | ---: | ---: | ---: | --- |
 | `hub` | `hub-full-architecture.tfplan` | 0 | 0 | 0 | Existing hub remains unchanged. |
-| `test` | `test-full-architecture.tfplan` | 0 | 0 | 0 | Existing test runtime remains unchanged. |
-| `prod` | `prod-full-architecture.tfplan` | 29 | 0 | 0 | Creates production foundation only; AKS/App Gateway/Front Door/AI are gated off. |
-| `prod-dr` | `prod-dr-full-architecture.tfplan` | 21 | 0 | 0 | Creates Level 2 DR foundation only; warm runtime is gated off. |
+| `test` | `test-full-architecture.tfplan` | 3 | 0 | 0 | Adds App Gateway diagnostics and two edge health alerts. |
+| `prod` | `prod-full-architecture.tfplan` | 30 | 0 | 0 | Creates production foundation plus platform action group; AKS/App Gateway/Front Door/AI are gated off. |
+| `prod-dr` | `prod-dr-full-architecture.tfplan` | 22 | 0 | 0 | Creates Level 2 DR foundation plus platform action group; warm runtime is gated off. |
 
 ## Immediate Next Implementation Step
 
-1. Add diagnostic settings for App Gateway WAF and Front Door modules.
-2. Decide whether Front Door lives only in hub/global root or is composed from spoke roots using origin outputs.
-3. Add first Azure Policy assignment set and OPA checks.
-4. Review and apply `prod`, then `prod-dr`, if costs and resource list look good.
+1. Review and apply the `test` App Gateway diagnostics/alerts plan.
+2. Review and apply `prod`, then `prod-dr`, if costs and resource list look good.
+3. Decide whether Front Door lives only in hub/global root or is composed from spoke roots using origin outputs.
+4. Wire Azure Policy definitions into assignment pipelines after test audit mode is confirmed.
 
 ## Safety Rules
 

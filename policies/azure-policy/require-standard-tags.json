@@ -1,0 +1,53 @@
+{
+  "properties": {
+    "displayName": "KairoAI - require standard tags",
+    "description": "Audit resources that do not include the standard KairoAI operating tags.",
+    "mode": "Indexed",
+    "metadata": {
+      "category": "KairoAI"
+    },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Effect"
+        },
+        "allowedValues": [
+          "Audit",
+          "Deny",
+          "Disabled"
+        ],
+        "defaultValue": "Audit"
+      },
+      "requiredTags": {
+        "type": "Array",
+        "metadata": {
+          "displayName": "Required tags"
+        },
+        "defaultValue": [
+          "application",
+          "environment",
+          "managed_by",
+          "owner",
+          "cost_center"
+        ]
+      }
+    },
+    "policyRule": {
+      "if": {
+        "count": {
+          "value": "[parameters('requiredTags')]",
+          "name": "tagName",
+          "where": {
+            "field": "[concat('tags[', current('tagName'), ']')]",
+            "exists": "false"
+          }
+        },
+        "greater": 0
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

@@ -65,6 +65,40 @@ variable "waf_policy_name" {
   default     = null
 }
 
+variable "log_analytics_workspace_id" {
+  description = "Optional Log Analytics workspace ID for Application Gateway diagnostics."
+  type        = string
+  default     = null
+}
+
+variable "diagnostic_log_categories" {
+  description = "Application Gateway diagnostic log categories to send to Log Analytics."
+  type        = set(string)
+  default = [
+    "ApplicationGatewayAccessLog",
+    "ApplicationGatewayPerformanceLog",
+    "ApplicationGatewayFirewallLog",
+  ]
+}
+
+variable "action_group_id" {
+  description = "Optional Azure Monitor action group ID for Application Gateway alerts."
+  type        = string
+  default     = null
+}
+
+variable "unhealthy_host_threshold" {
+  description = "Unhealthy backend host count threshold for Application Gateway alerting."
+  type        = number
+  default     = 0
+}
+
+variable "failed_requests_threshold" {
+  description = "Failed request count threshold for Application Gateway alerting."
+  type        = number
+  default     = 25
+}
+
 variable "tags" {
   description = "Resource tags."
   type        = map(string)

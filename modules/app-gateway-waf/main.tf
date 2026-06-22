@@ -123,3 +123,75 @@ resource "azurerm_application_gateway" "this" {
     ]
   }
 }
+
+resource "azurerm_monitor_diagnostic_setting" "this" {
+  count = var.log_analytics_workspace_id == null ? 0 : 1
+
+  name                       = "diag-${var.name}"
+  target_resource_id         = azurerm_application_gateway.this.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  dynamic "enabled_log" {
+    for_each = var.diagnostic_log_categories
+
+    content {
+      category = enabled_log.value
+    }
+  }
+
+  enabled_metric {
+    category = "AllMetrics"
+  }
+}
+
+resource "azurerm_monitor_metric_alert" "unhealthy_hosts" {
+  count = var.action_group_id == null ? 0 : 1
+
+  name                = "alert-${var.name}-unhealthy-hosts"
+  resource_group_name = var.resource_group_name
+  scopes              = [azurerm_application_gateway.this.id]
+  description         = "Application Gateway has unhealthy backend hosts."
+  severity            = 1
+  frequency           = "PT5M"
+  window_size         = "PT5M"
+  enabled             = true
+  tags                = var.tags
+
+  criteria {
+    metric_namespace = "Microsoft.Network/applicationGateways"
+    metric_name      = "UnhealthyHostCount"
+    aggregation      = "Average"
+    operator         = "GreaterThan"
+    threshold        = var.unhealthy_host_threshold
+  }
+
+  action {
+    action_group_id = var.action_group_id
+  }
+}
+
+resource "azurerm_monitor_metric_alert" "failed_requests" {
+  count = var.action_group_id == null ? 0 : 1
+
+  name                = "alert-${var.name}-failed-requests"
+  resource_group_name = var.resource_group_name
+  scopes              = [azurerm_application_gateway.this.id]
+  description         = "Application Gateway failed requests exceeded the configured threshold."
+  severity            = 2
+  frequency           = "PT5M"
+  window_size         = "PT15M"
+  enabled             = true
+  tags                = var.tags
+
+  criteria {
+    metric_namespace = "Microsoft.Network/applicationGateways"
+    metric_name      = "FailedRequests"
+    aggregation      = "Total"
+    operator         = "GreaterThan"
+    threshold        = var.failed_requests_threshold
+  }
+
+  action {
+    action_group_id = var.action_group_id
+  }
+}
