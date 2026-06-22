@@ -167,7 +167,7 @@ module "service_bus" {
   sku                          = var.service_bus_sku
   capacity                     = var.service_bus_capacity
   premium_messaging_partitions = var.service_bus_premium_messaging_partitions
-  queues                       = ["review-jobs", "analysis-results"]
+  queues                       = ["review-analysis", "review-jobs", "analysis-results"]
   tags                         = local.tags
 }
 

@@ -95,3 +95,4 @@ Production and prod-dr foundation resources are now created and verified with no
 - Hub Key Vault is limited to shared control-plane certificates and automation references. Test and prod Key Vaults hold environment-specific runtime secrets to preserve isolation and limit blast radius.
 - Managed AGIC is enabled on production AKS and receives Contributor only on `agw-kairoai-prod-ci`.
 - Human AKS administration is granted through `grp-kairoai-platform-admins`, not through direct user role assignments.
+- Service Bus retains `review-jobs` during migration and adds the application-contract queue `review-analysis`; workers use `review-analysis` and no live queue is deleted.

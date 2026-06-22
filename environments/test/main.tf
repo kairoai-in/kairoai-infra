@@ -160,7 +160,7 @@ module "service_bus" {
   resource_group_name = module.resource_group.name
   location            = module.resource_group.location
   sku                 = var.service_bus_sku
-  queues              = ["review-jobs", "analysis-results"]
+  queues              = ["review-analysis", "review-jobs", "analysis-results"]
   tags                = local.tags
 }
 
