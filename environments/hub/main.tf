@@ -78,7 +78,7 @@ resource "azurerm_subnet" "hub" {
   virtual_network_name = azurerm_virtual_network.hub.name
   address_prefixes     = [each.value]
 
-  private_endpoint_network_policies_enabled = each.key == "snet-private-endpoints" ? false : true
+  private_endpoint_network_policies = each.key == "snet-private-endpoints" ? "Disabled" : "Enabled"
 }
 
 resource "azurerm_dns_zone" "public" {
