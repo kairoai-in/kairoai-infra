@@ -92,3 +92,6 @@ Production and prod-dr foundation resources are now created and verified with no
 - Required ingress path is `Internet -> Azure Front Door -> Application Gateway WAF -> AKS`.
 - Use Service Bus Premium capacity `1` and premium messaging partitions `1` for prod when Premium SKU is selected.
 - Production runtime wave 1 is live: `aks-kairoai-prod-ci`, `agw-kairoai-prod-ci`, WAF policy, App Gateway public IP `20.219.35.127`, diagnostics, and edge alerts.
+- Hub Key Vault is limited to shared control-plane certificates and automation references. Test and prod Key Vaults hold environment-specific runtime secrets to preserve isolation and limit blast radius.
+- Managed AGIC is enabled on production AKS and receives Contributor only on `agw-kairoai-prod-ci`.
+- Human AKS administration is granted through `grp-kairoai-platform-admins`, not through direct user role assignments.

@@ -184,6 +184,12 @@ variable "aks_private_cluster_enabled" {
   default     = true
 }
 
+variable "aks_cluster_admin_principal_ids" {
+  description = "Entra group object IDs granted production AKS data-plane administrator access."
+  type        = set(string)
+  default     = ["351af7b8-31dd-4186-a7bc-c2f38a79d242"]
+}
+
 variable "enable_app_gateway_waf" {
   description = "Create Application Gateway WAF for production."
   type        = bool

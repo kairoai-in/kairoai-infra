@@ -50,6 +50,14 @@ resource "azurerm_kubernetes_cluster" "this" {
     secret_rotation_interval = "2m"
   }
 
+  dynamic "ingress_application_gateway" {
+    for_each = var.application_gateway_id == null ? [] : [var.application_gateway_id]
+
+    content {
+      gateway_id = ingress_application_gateway.value
+    }
+  }
+
   monitor_metrics {
     annotations_allowed = "k8s.grafana.com/scrape,k8s.grafana.com/job"
     labels_allowed      = "app.kubernetes.io/name,app.kubernetes.io/instance,k8s-app"
@@ -104,4 +112,21 @@ resource "azurerm_role_assignment" "key_vault_secrets_user" {
   scope                = var.key_vault_id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_kubernetes_cluster.this.key_vault_secrets_provider[0].secret_identity[0].object_id
+}
+
+resource "azurerm_role_assignment" "agic_app_gateway_contributor" {
+  count = var.application_gateway_id == null ? 0 : 1
+
+  scope                = var.application_gateway_id
+  role_definition_name = "Contributor"
+  principal_id         = azurerm_kubernetes_cluster.this.ingress_application_gateway[0].ingress_application_gateway_identity[0].object_id
+}
+
+resource "azurerm_role_assignment" "cluster_admin" {
+  for_each = var.cluster_admin_principal_ids
+
+  scope                = azurerm_kubernetes_cluster.this.id
+  role_definition_name = "Azure Kubernetes Service RBAC Cluster Admin"
+  principal_id         = each.value
+  principal_type       = "Group"
 }

@@ -74,6 +74,11 @@ output "app_gateway_public_ip_address" {
   value       = var.enable_app_gateway_waf ? module.app_gateway_waf[0].public_ip_address : null
 }
 
+output "agic_identity_object_id" {
+  description = "Prod managed AGIC add-on identity object ID."
+  value       = var.enable_aks && var.enable_app_gateway_waf ? module.aks[0].agic_identity_object_id : null
+}
+
 output "front_door_endpoint_host_name" {
   description = "Prod Front Door endpoint hostname when enabled."
   value       = var.enable_front_door ? module.front_door[0].endpoint_host_name : null

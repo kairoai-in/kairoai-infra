@@ -28,6 +28,7 @@ aks_system_node_max_count   = 3
 aks_user_node_vm_size       = "Standard_D2s_v4"
 aks_user_node_min_count     = 2
 aks_user_node_max_count     = 6
+aks_cluster_admin_principal_ids = ["351af7b8-31dd-4186-a7bc-c2f38a79d242"]
 
 # Production runtime wave 1 is live. Front Door and AI remain off until reviewed.
 enable_aks             = true

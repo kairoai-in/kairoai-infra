@@ -58,7 +58,7 @@ Users / GitHub
 | DNS | Public DNS zone | `kairoai.in` | Live | GoDaddy delegates records/nameservers as needed. |
 | DNS | Private DNS zones | `private.postgres.database.azure.com`, `privatelink.azurecr.io`, `privatelink.blob.core.windows.net`, `privatelink.monitor.azure.com`, `privatelink.ods.opinsights.azure.com`, `privatelink.postgres.database.azure.com`, `privatelink.servicebus.windows.net`, `privatelink.vaultcore.azure.net` | Live | Link each spoke VNet to these zones. |
 | Registry | Azure Container Registry | `acrkairoaihubci` | Live | Shared image registry for test/prod/prod-dr. |
-| Secrets | Key Vault | `kv-kairoai-hub-ci` | Live | Shared hub secrets/certs where appropriate. |
+| Secrets | Key Vault | `kv-kairoai-hub-ci` | Live | Shared control-plane certificates and automation references only; never stores test/prod workload secrets. |
 | Observability | Log Analytics | `law-kairoai-hub-ci` | Live | Hub control-plane logs. |
 | Edge | Azure Front Door Premium | `afd-kairoai-*-*` / endpoints `fde-kairoai-*-*` | Planned | Global public entry before regional App Gateway. |
 | Security | Azure Firewall | TBD | Deferred | Add if budget allows centralized egress/inspection. |
@@ -113,7 +113,7 @@ Users / GitHub
 | Network | Private jobs subnet | `snet-aci-private` `10.30.15.0/24` | Live | Private jobs reserve. |
 | Peering | Hub-prod VNet peering | `peer-vnet-kairoai-prod-ci-to-vnet-kairoai-hub-ci` and reverse | Live | Bidirectional hub-spoke peering. |
 | DNS | Private DNS links | `link-*-prod` | Live | Links prod VNet to hub private DNS zones. |
-| AKS | Cluster | `aks-kairoai-prod-ci` | Live | Private cluster, autoscaled system/user pools. |
+| AKS | Cluster | `aks-kairoai-prod-ci` | Live | Private cluster, autoscaled system/user pools, managed AGIC enabled. |
 | Edge | Public IP | `pip-kairoai-prod-ci` `20.219.35.127` | Live | App Gateway frontend IP. |
 | Edge | Application Gateway WAF | `agw-kairoai-prod-ci` | Live | Regional WAF before AKS. |
 | Edge | WAF policy | `policy-agw-kairoai-prod-ci` | Live | OWASP managed rules in Prevention mode. |
@@ -130,6 +130,7 @@ Users / GitHub
 | Observability | App Gateway diagnostic setting | `diag-agw-kairoai-prod-ci` | Live | Sends access, performance, firewall logs, and metrics to Log Analytics. |
 | Observability | App Gateway alerts | `alert-agw-kairoai-prod-ci-unhealthy-hosts`, `alert-agw-kairoai-prod-ci-failed-requests` | Live | Regional edge health alerts. |
 | Governance | Managed identities | `id-*` | Feature-gated | Workload identity and GitHub OIDC. |
+| Governance | Platform admin group | `grp-kairoai-platform-admins` | Live | Group-based AKS data-plane administration; no direct human role assignment. |
 | Governance | Azure Policy assignments | From `policy_assignments` | Feature-gated | Resource-group scoped guardrails. |
 
 ### Prod DR - `kairoai-prod-subscription`
@@ -269,6 +270,8 @@ Applied production runtime wave 1:
 - ACR pull permission from hub ACR.
 - Key Vault CSI provider secret read permission.
 - App Gateway WAF v2 with WAF policy, public IP, diagnostics, and edge alerts.
+- Managed AGIC add-on connected to `agw-kairoai-prod-ci` with gateway-scoped Contributor access.
+- Entra group `grp-kairoai-platform-admins` assigned AKS RBAC Cluster Admin for data-plane operations.
 
 Feature-gated for reviewed enablement:
 
@@ -392,8 +395,8 @@ Saved plan status:
 ## Immediate Next Implementation Step
 
 1. Decide whether Front Door lives only in hub/global root or is composed from spoke roots using origin outputs.
-2. Configure AGIC/ingress integration so App Gateway can route to AKS services.
-3. Plan Front Door production routes for `kairoai.in` and `api.kairoai.in` after App Gateway health is verified.
+2. Deploy application ingress resources with class `azure-application-gateway` so AGIC can configure App Gateway backends.
+3. Plan Front Door production routes for `kairoai.in` and `api.kairoai.in` after the application backend is healthy.
 4. Wire Azure Policy definitions into assignment pipelines after test audit mode is confirmed.
 5. Add private endpoints and tighten public network access once application connectivity is validated.
 

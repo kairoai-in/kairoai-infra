@@ -65,6 +65,18 @@ variable "key_vault_id" {
   type        = string
 }
 
+variable "application_gateway_id" {
+  description = "Existing Application Gateway ID for the managed AGIC add-on. Leave null to disable AGIC."
+  type        = string
+  default     = null
+}
+
+variable "cluster_admin_principal_ids" {
+  description = "Entra group or service principal object IDs granted the AKS RBAC Cluster Admin role."
+  type        = set(string)
+  default     = []
+}
+
 variable "system_node_vm_size" {
   description = "VM size for the system node pool."
   type        = string
