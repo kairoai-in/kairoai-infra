@@ -175,7 +175,7 @@ variable "alert_email" {
 variable "enable_app_gateway_waf" {
   description = "Create Application Gateway WAF for the test spoke."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_front_door" {

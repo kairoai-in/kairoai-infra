@@ -59,6 +59,12 @@ variable "waf_mode" {
   default     = "Prevention"
 }
 
+variable "waf_policy_name" {
+  description = "Application Gateway WAF policy name. Defaults to policy-<gateway-name>."
+  type        = string
+  default     = null
+}
+
 variable "tags" {
   description = "Resource tags."
   type        = map(string)

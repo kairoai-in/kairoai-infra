@@ -17,3 +17,8 @@ output "frontend_fqdn" {
   description = "Application Gateway public IP FQDN, if configured by Azure."
   value       = azurerm_public_ip.this.fqdn
 }
+
+output "waf_policy_id" {
+  description = "Application Gateway WAF policy ID."
+  value       = azurerm_web_application_firewall_policy.this.id
+}

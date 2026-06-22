@@ -14,6 +14,7 @@ locals {
   http_settings_name     = "http-settings"
   request_rule_name      = "default-http-rule"
   gateway_ip_config_name = "gateway-ip-configuration"
+  waf_policy_name        = coalesce(var.waf_policy_name, "policy-${var.name}")
 }
 
 resource "azurerm_public_ip" "this" {
@@ -26,11 +27,34 @@ resource "azurerm_public_ip" "this" {
   tags                = var.tags
 }
 
+resource "azurerm_web_application_firewall_policy" "this" {
+  name                = local.waf_policy_name
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  tags                = var.tags
+
+  policy_settings {
+    enabled                     = true
+    mode                        = var.waf_mode
+    request_body_check          = true
+    file_upload_limit_in_mb     = 100
+    max_request_body_size_in_kb = 128
+  }
+
+  managed_rules {
+    managed_rule_set {
+      type    = "OWASP"
+      version = "3.2"
+    }
+  }
+}
+
 resource "azurerm_application_gateway" "this" {
   name                = var.name
   resource_group_name = var.resource_group_name
   location            = var.location
   tags                = var.tags
+  firewall_policy_id  = azurerm_web_application_firewall_policy.this.id
 
   sku {
     name = "WAF_v2"
@@ -84,13 +108,6 @@ resource "azurerm_application_gateway" "this" {
     backend_address_pool_name  = local.backend_pool_name
     backend_http_settings_name = local.http_settings_name
     priority                   = 100
-  }
-
-  waf_configuration {
-    enabled          = true
-    firewall_mode    = var.waf_mode
-    rule_set_type    = "OWASP"
-    rule_set_version = "3.2"
   }
 
   lifecycle {
