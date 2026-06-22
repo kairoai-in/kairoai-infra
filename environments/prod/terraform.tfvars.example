@@ -29,9 +29,9 @@ aks_user_node_vm_size       = "Standard_D2s_v4"
 aks_user_node_min_count     = 2
 aks_user_node_max_count     = 6
 
-# Keep expensive production runtime gates off until the saved plan is reviewed.
-enable_aks             = false
-enable_app_gateway_waf = false
+# Production runtime wave 1 is live. Front Door and AI remain off until reviewed.
+enable_aks             = true
+enable_app_gateway_waf = true
 enable_front_door      = false
 enable_ai_foundry      = false
 

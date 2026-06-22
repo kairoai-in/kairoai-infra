@@ -133,7 +133,7 @@ variable "service_bus_premium_messaging_partitions" {
 variable "enable_aks" {
   description = "Create production AKS."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "aks_kubernetes_version" {
@@ -187,7 +187,7 @@ variable "aks_private_cluster_enabled" {
 variable "enable_app_gateway_waf" {
   description = "Create Application Gateway WAF for production."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_front_door" {

@@ -1,6 +1,6 @@
 # Full Architecture Rollout Plan
 
-Last updated: `2026-06-22 23:59:48 +05:30`
+Last updated: `2026-06-23 00:42:00 +05:30`
 
 This document treats KairoAI infrastructure as one complete architecture, not as isolated resources. Terraform still applies in dependency-safe waves because Azure resources depend on each other across subscriptions, but each wave belongs to the same target design.
 
@@ -24,7 +24,7 @@ Internet
 | --- | --- | --- |
 | Hub | Terraform state, ACR, public DNS zone, private DNS zones, shared Key Vault, hub VNet, future global Front Door/security resources | Centralized shared services and cross-environment control plane. |
 | Test spoke | Test VNet, AKS, App Gateway WAF, PostgreSQL, Key Vault, Service Bus, monitoring, AI Foundry test, workload identities, policy assignments | End-to-end validation before production. |
-| Prod spoke | Production VNet, foundation subnets, PostgreSQL, Key Vault, Service Bus, monitoring, optional AKS/App Gateway WAF/Front Door/AI/workload identities/policy gates | Production runtime in Central India. |
+| Prod spoke | Production VNet, AKS, App Gateway WAF, PostgreSQL, Key Vault, Service Bus, monitoring, optional Front Door/AI/workload identities/policy gates | Production runtime in Central India. |
 | Prod DR | DR VNet, Key Vault recovery, DR observability, optional database/failover and warm standby AKS/App Gateway | Level 2 demo DR in South India, upgradeable to Level 3. |
 
 ## Diagram Resource Inventory
@@ -113,10 +113,10 @@ Users / GitHub
 | Network | Private jobs subnet | `snet-aci-private` `10.30.15.0/24` | Live | Private jobs reserve. |
 | Peering | Hub-prod VNet peering | `peer-vnet-kairoai-prod-ci-to-vnet-kairoai-hub-ci` and reverse | Live | Bidirectional hub-spoke peering. |
 | DNS | Private DNS links | `link-*-prod` | Live | Links prod VNet to hub private DNS zones. |
-| AKS | Cluster | `aks-kairoai-prod-ci` | Feature-gated | Private cluster, autoscaled pools. |
-| Edge | Public IP | `pip-kairoai-prod-ci` | Feature-gated | App Gateway frontend IP. |
-| Edge | Application Gateway WAF | `agw-kairoai-prod-ci` | Feature-gated | Regional WAF before AKS. |
-| Edge | WAF policy | `policy-agw-kairoai-prod-ci` | Feature-gated | OWASP managed rules. |
+| AKS | Cluster | `aks-kairoai-prod-ci` | Live | Private cluster, autoscaled system/user pools. |
+| Edge | Public IP | `pip-kairoai-prod-ci` `20.219.35.127` | Live | App Gateway frontend IP. |
+| Edge | Application Gateway WAF | `agw-kairoai-prod-ci` | Live | Regional WAF before AKS. |
+| Edge | WAF policy | `policy-agw-kairoai-prod-ci` | Live | OWASP managed rules in Prevention mode. |
 | Edge | Front Door | `afd-kairoai-prod-ci` / `fde-kairoai-prod-ci` | Feature-gated | Routes `kairoai.in` and `api.kairoai.in`. |
 | Data | PostgreSQL Flexible Server | `psql-kairoai-prod-ci` | Live | Production app database. |
 | Data | PostgreSQL database | `kairoai` | Live | App database. |
@@ -127,6 +127,8 @@ Users / GitHub
 | Observability | Log Analytics | `law-kairoai-prod-ci` | Live | Production logs. |
 | Observability | Application Insights | `appi-kairoai-prod-ci` | Live | Production telemetry. |
 | Observability | Action group | `ag-kairoai-prod-platform` | Live | Alert routing. |
+| Observability | App Gateway diagnostic setting | `diag-agw-kairoai-prod-ci` | Live | Sends access, performance, firewall logs, and metrics to Log Analytics. |
+| Observability | App Gateway alerts | `alert-agw-kairoai-prod-ci-unhealthy-hosts`, `alert-agw-kairoai-prod-ci-failed-requests` | Live | Regional edge health alerts. |
 | Governance | Managed identities | `id-*` | Feature-gated | Workload identity and GitHub OIDC. |
 | Governance | Azure Policy assignments | From `policy_assignments` | Feature-gated | Resource-group scoped guardrails. |
 
@@ -261,10 +263,15 @@ Applied production foundation:
 - Service Bus.
 - App Insights, Log Analytics or central workspace strategy.
 
+Applied production runtime wave 1:
+
+- AKS private cluster with autoscaled system and user pools.
+- ACR pull permission from hub ACR.
+- Key Vault CSI provider secret read permission.
+- App Gateway WAF v2 with WAF policy, public IP, diagnostics, and edge alerts.
+
 Feature-gated for reviewed enablement:
 
-- AKS private cluster with autoscaling.
-- App Gateway WAF v2 with WAF policy.
 - Azure Monitor workspace and Managed Grafana integration if prod-specific dashboards are required.
 - Azure AI Foundry / AI Services prod deployment.
 - Managed identities and federated credentials.
@@ -332,8 +339,8 @@ Reason:
 | Network | Hub VNet live | Spoke VNet live | Live | Live |
 | Peering | Hub-test live | Hub-test live | Live hub-prod | Live hub-prod-dr |
 | ACR | Live shared ACR | Pulls from hub ACR | Pulls from hub ACR | Pulls from hub ACR |
-| AKS | N/A | Live | Planned | Optional Level 3 |
-| App Gateway WAF | N/A | Live | Planned | Optional Level 3 |
+| AKS | N/A | Live | Live | Optional Level 3 |
+| App Gateway WAF | N/A | Live | Live | Optional Level 3 |
 | Front Door | Planned global | Planned test route | Planned prod route | Planned failover route |
 | PostgreSQL | N/A | Live | Live | Feature-gated DR database/failover |
 | Service Bus | N/A | Live | Live | Feature-gated DR namespace |
@@ -379,15 +386,16 @@ Saved plan status:
 | --- | --- | ---: | ---: | ---: | --- |
 | `hub` | `hub-full-architecture.tfplan` | 0 | 0 | 0 | Existing hub remains unchanged. |
 | `test` | `test-full-architecture.tfplan` | 0 | 0 | 0 | Test observability is applied and clean. |
-| `prod` | `prod-full-architecture.tfplan` | 0 | 0 | 0 | Production foundation is applied and clean; AKS/App Gateway/Front Door/AI are gated off. |
+| `prod` | `prod-runtime-wave.tfplan` | 0 | 0 | 0 | Production AKS and App Gateway WAF are applied and clean; Front Door/AI remain gated off. |
 | `prod-dr` | `prod-dr-full-architecture.tfplan` | 0 | 0 | 0 | Level 2 DR foundation is applied and clean; warm runtime is gated off. |
 
 ## Immediate Next Implementation Step
 
 1. Decide whether Front Door lives only in hub/global root or is composed from spoke roots using origin outputs.
-2. Plan/apply production AKS and App Gateway WAF when ready to host workloads in prod.
-3. Wire Azure Policy definitions into assignment pipelines after test audit mode is confirmed.
-4. Add private endpoints and tighten public network access once application connectivity is validated.
+2. Configure AGIC/ingress integration so App Gateway can route to AKS services.
+3. Plan Front Door production routes for `kairoai.in` and `api.kairoai.in` after App Gateway health is verified.
+4. Wire Azure Policy definitions into assignment pipelines after test audit mode is confirmed.
+5. Add private endpoints and tighten public network access once application connectivity is validated.
 
 ## Safety Rules
 
