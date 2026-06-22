@@ -1,0 +1,8 @@
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "rg-kairoai-tfstate-ci"
+    storage_account_name = "stkairoaitfstateci"
+    container_name       = "tfstate"
+    key                  = "kairoai/test/terraform.tfstate"
+  }
+}
