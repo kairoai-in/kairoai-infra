@@ -1,0 +1,18 @@
+subscription_id = "5b942f88-17e6-4026-ae23-d520365fb916"
+tenant_id       = "83474cb5-f1fa-4d06-906c-e5dad12ce3b9"
+location        = "centralindia"
+environment     = "hub"
+vnet_cidr       = "10.10.0.0/16"
+
+acr_sku                       = "Premium"
+log_retention_days            = 30
+public_network_access_enabled = true
+
+key_vault_purge_protection_enabled   = true
+key_vault_soft_delete_retention_days = 30
+
+tags = {
+  application = "kairoai"
+  environment = "hub"
+  managed_by  = "terraform"
+}

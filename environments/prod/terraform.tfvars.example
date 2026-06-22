@@ -1,0 +1,50 @@
+subscription_id     = "a8270be7-dabc-4d92-98db-26a55025b0df"
+hub_subscription_id = "5b942f88-17e6-4026-ae23-d520365fb916"
+tenant_id           = "83474cb5-f1fa-4d06-906c-e5dad12ce3b9"
+location            = "centralindia"
+environment         = "prod"
+vnet_cidr           = "10.30.0.0/16"
+
+hub_state_resource_group_name  = "rg-kairoai-tfstate-ci"
+hub_state_storage_account_name = "stkairoaitfstateci"
+hub_state_container_name       = "hubtfstate"
+hub_state_key                  = "kairoai/hub/terraform.tfstate"
+
+log_retention_days            = 90
+public_network_access_enabled = true
+
+postgres_version    = "16"
+postgres_sku_name   = "GP_Standard_D2s_v3"
+postgres_storage_mb = 131072
+service_bus_sku     = "Premium"
+
+aks_private_cluster_enabled = true
+aks_system_node_vm_size     = "Standard_D2s_v4"
+aks_system_node_min_count   = 2
+aks_system_node_max_count   = 3
+aks_user_node_vm_size       = "Standard_D2s_v4"
+aks_user_node_min_count     = 2
+aks_user_node_max_count     = 6
+
+# Keep expensive production runtime gates off until the saved plan is reviewed.
+enable_aks             = false
+enable_app_gateway_waf = false
+enable_front_door      = false
+enable_ai_foundry      = false
+
+app_gateway_min_capacity = 1
+app_gateway_max_capacity = 3
+front_door_sku_name      = "Premium_AzureFrontDoor"
+ai_foundry_sku_name      = "S0"
+ai_foundry_deployments   = {}
+managed_identities       = {}
+policy_assignments       = {}
+
+key_vault_purge_protection_enabled   = true
+key_vault_soft_delete_retention_days = 90
+
+tags = {
+  application = "kairoai"
+  environment = "prod"
+  managed_by  = "terraform"
+}

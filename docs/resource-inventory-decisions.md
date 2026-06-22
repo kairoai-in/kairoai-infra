@@ -1,6 +1,6 @@
 # Resource Inventory and Decisions
 
-Last updated: `2026-06-22 21:31:20 +05:30`
+Last updated: `2026-06-22 23:06:29 +05:30`
 
 This file is the practical inventory for where KairoAI Azure resources live, why they exist, and whether they are live or planned. The high-level architecture remains in `azure-hub-spoke-blueprint.md`; this file is the operator-friendly companion.
 
@@ -62,12 +62,21 @@ This file is the practical inventory for where KairoAI Azure resources live, why
 
 ## Prod and DR Subscription Resources
 
-Production resources are not created yet. They will reuse the same module pattern validated in test.
+Production resources are not created yet. The prod and prod-dr Terraform roots now reuse the same module pattern validated in test and have saved plans ready for review.
 
 | Scope | Planned Resources | Reason |
 | --- | --- | --- |
-| Prod primary | RG, VNet, AKS, App Gateway WAF, PostgreSQL Flexible Server, Key Vault, Service Bus, Monitor, Application Insights, managed identities, policy assignments, AI Foundry as needed | Production deployment in Central India. |
-| Prod DR | DR RG, DR VNet, database recovery/failover path, Key Vault recovery, monitoring, optional warm standby AKS later | Demo target is DR Level 2 in South India. |
+| Prod primary | RG, VNet/subnets, hub peering, private DNS links, PostgreSQL Flexible Server, Key Vault, Service Bus, Monitor, Application Insights; optional gated AKS, App Gateway WAF, Front Door, AI Foundry, managed identities, and policy assignments | Production deployment in Central India with high-cost runtime gates reviewed before apply. |
+| Prod DR | DR RG, DR VNet/subnets, hub peering, private DNS links, Key Vault, monitoring; optional gated PostgreSQL, Service Bus, warm standby AKS, App Gateway WAF, AI Foundry, managed identities, and policy assignments | Demo target is DR Level 2 in South India, upgradeable without redesign. |
+
+## Saved Architecture Plans
+
+| Root | Plan File | Result |
+| --- | --- | --- |
+| `environments/hub` | `hub-full-architecture.tfplan` | `0` create, `0` update, `0` delete. |
+| `environments/test` | `test-full-architecture.tfplan` | `0` create, `0` update, `0` delete. |
+| `environments/prod` | `prod-full-architecture.tfplan` | `29` create, `0` update, `0` delete. |
+| `environments/prod-dr` | `prod-dr-full-architecture.tfplan` | `21` create, `0` update, `0` delete. |
 
 ## Key Decisions
 

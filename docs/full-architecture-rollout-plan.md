@@ -1,6 +1,6 @@
 # Full Architecture Rollout Plan
 
-Last updated: `2026-06-22 21:49:44 +05:30`
+Last updated: `2026-06-22 23:06:29 +05:30`
 
 This document treats KairoAI infrastructure as one complete architecture, not as isolated resources. Terraform still applies in dependency-safe waves because Azure resources depend on each other across subscriptions, but each wave belongs to the same target design.
 
@@ -24,8 +24,8 @@ Internet
 | --- | --- | --- |
 | Hub | Terraform state, ACR, public DNS zone, private DNS zones, shared Key Vault, hub VNet, future global Front Door/security resources | Centralized shared services and cross-environment control plane. |
 | Test spoke | Test VNet, AKS, App Gateway WAF, PostgreSQL, Key Vault, Service Bus, monitoring, AI Foundry test, workload identities, policy assignments | End-to-end validation before production. |
-| Prod spoke | Production VNet, AKS, App Gateway WAF, PostgreSQL, Key Vault, Service Bus, monitoring, AI Foundry prod, workload identities, policy assignments | Production runtime in Central India. |
-| Prod DR | DR VNet, DR database/failover foundation, Key Vault recovery, optional warm standby AKS/App Gateway, DR observability | Level 2 demo DR in South India, upgradeable to Level 3. |
+| Prod spoke | Production VNet, foundation subnets, PostgreSQL, Key Vault, Service Bus, monitoring, optional AKS/App Gateway WAF/Front Door/AI/workload identities/policy gates | Production runtime in Central India. |
+| Prod DR | DR VNet, Key Vault recovery, DR observability, optional database/failover and warm standby AKS/App Gateway | Level 2 demo DR in South India, upgradeable to Level 3. |
 
 ## Rollout Waves
 
@@ -104,21 +104,24 @@ Reason:
 
 ### Wave 3 - Prod Primary
 
-Status: contract exists; implementation pending.
+Status: reusable module root implemented and saved plan generated. Not applied.
 
-Create using the same reusable modules:
+Default plan creates the production foundation:
 
 - `rg-kairoai-prod-ci`
 - `vnet-kairoai-prod-ci`
 - subnets for AKS system/user, App Gateway, private endpoints, PostgreSQL, private jobs.
 - Hub-prod peering.
 - Hub private DNS links.
-- AKS private cluster with autoscaling.
-- App Gateway WAF v2 with WAF policy.
 - PostgreSQL Flexible Server.
 - Key Vault.
 - Service Bus.
 - App Insights, Log Analytics or central workspace strategy.
+
+Feature-gated for reviewed enablement:
+
+- AKS private cluster with autoscaling.
+- App Gateway WAF v2 with WAF policy.
 - Azure Monitor workspace and Managed Grafana integration if prod-specific dashboards are required.
 - Azure AI Foundry / AI Services prod deployment.
 - Managed identities and federated credentials.
@@ -131,27 +134,28 @@ Reason:
 
 ### Wave 4 - Prod DR
 
-Status: contract exists; implementation pending.
+Status: reusable module root implemented and saved plan generated. Not applied.
 
 Demo target: Level 2.
 
-Create:
+Default plan creates the Level 2 DR foundation:
 
 - `rg-kairoai-prod-dr-si`
 - `vnet-kairoai-prod-dr-si`
 - DR subnets.
 - Hub-DR peering.
 - Private DNS links.
-- PostgreSQL backup/failover foundation or replica path, depending on Azure feature/quota fit.
 - Key Vault restore/recovery path.
 - DR monitoring hooks and runbooks.
 
-Optional Level 3 later:
+Feature-gated for reviewed enablement:
 
+- PostgreSQL backup/failover foundation or replica path, depending on Azure feature/quota fit.
+- DR Service Bus namespace.
 - Warm standby AKS.
 - DR App Gateway WAF.
+- Azure AI Foundry / AI Services.
 - DR Front Door origin/failover route.
-- DR Service Bus namespace if active-passive messaging is required.
 
 Reason:
 
@@ -215,16 +219,30 @@ We should plan the whole architecture in code, but apply in controlled waves:
 
 This gives us one architecture review while still respecting Azure dependencies and cost controls.
 
+## Current Plan Review
+
+Completed in code:
+
+1. Refactored `prod` and `prod-dr` roots to use the same reusable modules as `test`.
+2. Added shared environment variables for feature gates and SKU choices.
+3. Added backend configuration for `prod` and `prod-dr` in the hub `prodtfstate` container.
+4. Ran a combined validation and saved-plan pass across all roots.
+
+Saved plan status:
+
+| Root | Saved plan | Create | Update | Delete | Notes |
+| --- | --- | ---: | ---: | ---: | --- |
+| `hub` | `hub-full-architecture.tfplan` | 0 | 0 | 0 | Existing hub remains unchanged. |
+| `test` | `test-full-architecture.tfplan` | 0 | 0 | 0 | Existing test runtime remains unchanged. |
+| `prod` | `prod-full-architecture.tfplan` | 29 | 0 | 0 | Creates production foundation only; AKS/App Gateway/Front Door/AI are gated off. |
+| `prod-dr` | `prod-dr-full-architecture.tfplan` | 21 | 0 | 0 | Creates Level 2 DR foundation only; warm runtime is gated off. |
+
 ## Immediate Next Implementation Step
 
-Instead of enabling Front Door alone, the next code step should be:
-
-1. Refactor `prod` and `prod-dr` roots to use the same reusable modules as `test`.
-2. Add shared environment variables for feature gates and SKU choices.
-3. Add diagnostic settings for App Gateway WAF and Front Door modules.
-4. Add Front Door in hub/global design with test/prod route inputs.
-5. Run a combined validation pass across all roots.
-6. Produce saved plan files for all roots for a single review.
+1. Add diagnostic settings for App Gateway WAF and Front Door modules.
+2. Decide whether Front Door lives only in hub/global root or is composed from spoke roots using origin outputs.
+3. Add first Azure Policy assignment set and OPA checks.
+4. Review and apply `prod`, then `prod-dr`, if costs and resource list look good.
 
 ## Safety Rules
 
