@@ -16,6 +16,8 @@ provider "azurerm" {
   features {}
 }
 
+data "azurerm_client_config" "current" {}
+
 locals {
   tags = merge(
     {
@@ -65,7 +67,15 @@ resource "azurerm_storage_account" "state" {
 }
 
 resource "azurerm_storage_container" "state" {
-  name                  = var.container_name
+  for_each              = toset(var.container_names)
+  name                  = each.value
   storage_account_name  = azurerm_storage_account.state.name
   container_access_type = "private"
+}
+
+resource "azurerm_role_assignment" "state_blob_data_contributor" {
+  for_each             = toset(concat([data.azurerm_client_config.current.object_id], var.state_blob_data_contributor_object_ids))
+  scope                = azurerm_storage_account.state.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = each.value
 }

@@ -20,4 +20,4 @@ Region: Central India
 
 ## State Key
 
-`kairoai/hub/terraform.tfstate`
+`hubtfstate/kairoai/hub/terraform.tfstate`

@@ -62,10 +62,10 @@ Terraform state should be stored in an Azure Storage Account backend. Bootstrap 
 
 State keys:
 
-- `kairoai/hub/terraform.tfstate`
-- `kairoai/test/terraform.tfstate`
-- `kairoai/prod/terraform.tfstate`
-- `kairoai/prod-dr/terraform.tfstate`
+- `hubtfstate/kairoai/hub/terraform.tfstate`
+- `testtfstate/kairoai/test/terraform.tfstate`
+- `prodtfstate/kairoai/prod/terraform.tfstate`
+- `prodtfstate/kairoai/prod-dr/terraform.tfstate`
 
 ## Current Status
 

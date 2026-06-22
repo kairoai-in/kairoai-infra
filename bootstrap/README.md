@@ -6,7 +6,10 @@ Expected resources:
 
 - Resource group for Terraform state.
 - Storage account.
-- Blob container.
+- Blob containers:
+  - `hubtfstate`
+  - `testtfstate`
+  - `prodtfstate`
 
 After bootstrap, environment root modules should use the Azure Storage backend.
 
@@ -25,6 +28,5 @@ After bootstrap, environment root modules should use the Azure Storage backend.
 terraform init
 terraform plan `
   -var="resource_group_name=rg-kairoai-tfstate-ci" `
-  -var="storage_account_name=stkairoaitfstateci" `
-  -var="container_name=tfstate"
+  -var="storage_account_name=stkairoaitfstateci"
 ```

@@ -2,17 +2,17 @@ locals {
   region_code = "ci"
 
   names = {
-    resource_group            = "rg-kairoai-hub-ci"
-    vnet                      = "vnet-kairoai-hub-ci"
-    firewall                  = "afw-kairoai-hub-ci"
-    firewall_policy           = "afwp-kairoai-hub-ci"
-    bastion                   = "bas-kairoai-hub-ci"
-    acr                       = "acrkairoaihubci"
-    front_door                = "afd-kairoai-global"
-    public_dns_zone           = "kairoai.in"
-    terraform_state_rg        = "rg-kairoai-tfstate-ci"
-    terraform_state_storage   = "stkairoaitfstateci"
-    terraform_state_container = "tfstate"
+    resource_group             = "rg-kairoai-hub-ci"
+    vnet                       = "vnet-kairoai-hub-ci"
+    firewall                   = "afw-kairoai-hub-ci"
+    firewall_policy            = "afwp-kairoai-hub-ci"
+    bastion                    = "bas-kairoai-hub-ci"
+    acr                        = "acrkairoaihubci"
+    front_door                 = "afd-kairoai-global"
+    public_dns_zone            = "kairoai.in"
+    terraform_state_rg         = "rg-kairoai-tfstate-ci"
+    terraform_state_storage    = "stkairoaitfstateci"
+    terraform_state_containers = ["hubtfstate", "testtfstate", "prodtfstate"]
   }
 
   subnets = {

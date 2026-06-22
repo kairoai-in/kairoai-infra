@@ -26,10 +26,10 @@ variable "storage_account_name" {
   type        = string
 }
 
-variable "container_name" {
-  description = "Blob container name for Terraform state."
-  type        = string
-  default     = "tfstate"
+variable "container_names" {
+  description = "Blob container names for Terraform state."
+  type        = list(string)
+  default     = ["hubtfstate", "testtfstate", "prodtfstate"]
 }
 
 variable "account_replication_type" {
@@ -60,4 +60,10 @@ variable "tags" {
   description = "Additional tags for Terraform state resources."
   type        = map(string)
   default     = {}
+}
+
+variable "state_blob_data_contributor_object_ids" {
+  description = "Additional Entra object IDs granted Storage Blob Data Contributor on the Terraform state storage account."
+  type        = list(string)
+  default     = []
 }
