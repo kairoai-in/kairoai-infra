@@ -83,3 +83,28 @@ output "managed_grafana_id" {
   description = "Azure Managed Grafana resource ID."
   value       = azurerm_dashboard_grafana.test.id
 }
+
+output "app_gateway_public_ip_address" {
+  description = "Application Gateway public IP address when enabled."
+  value       = var.enable_app_gateway_waf ? module.app_gateway_waf[0].public_ip_address : null
+}
+
+output "front_door_endpoint_host_name" {
+  description = "Front Door endpoint hostname when enabled."
+  value       = var.enable_front_door ? module.front_door[0].endpoint_host_name : null
+}
+
+output "ai_foundry_endpoint" {
+  description = "Azure AI Services endpoint when enabled."
+  value       = var.enable_ai_foundry ? module.ai_foundry[0].endpoint : null
+}
+
+output "managed_identity_client_ids" {
+  description = "Managed identity client IDs keyed by identity name."
+  value       = { for name, identity in module.managed_identity : name => identity.client_id }
+}
+
+output "policy_assignment_ids" {
+  description = "Azure Policy assignment IDs keyed by assignment name."
+  value       = module.policy.assignment_ids
+}

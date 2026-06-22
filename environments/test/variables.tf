@@ -171,3 +171,86 @@ variable "alert_email" {
   type        = string
   default     = ""
 }
+
+variable "enable_app_gateway_waf" {
+  description = "Create Application Gateway WAF for the test spoke."
+  type        = bool
+  default     = false
+}
+
+variable "enable_front_door" {
+  description = "Create Azure Front Door in front of Application Gateway WAF."
+  type        = bool
+  default     = false
+}
+
+variable "enable_ai_foundry" {
+  description = "Create Azure AI Services / AI Foundry account and model deployments."
+  type        = bool
+  default     = false
+}
+
+variable "app_gateway_min_capacity" {
+  description = "Minimum Application Gateway autoscale capacity."
+  type        = number
+  default     = 1
+}
+
+variable "app_gateway_max_capacity" {
+  description = "Maximum Application Gateway autoscale capacity."
+  type        = number
+  default     = 2
+}
+
+variable "front_door_sku_name" {
+  description = "Azure Front Door SKU."
+  type        = string
+  default     = "Premium_AzureFrontDoor"
+}
+
+variable "ai_foundry_sku_name" {
+  description = "Azure AI Services SKU."
+  type        = string
+  default     = "S0"
+}
+
+variable "ai_foundry_deployments" {
+  description = "Azure AI model deployments keyed by deployment name."
+  type = map(object({
+    model_format  = optional(string, "OpenAI")
+    model_name    = string
+    model_version = string
+    sku_name      = optional(string, "Standard")
+    capacity      = optional(number, 1)
+  }))
+  default = {}
+}
+
+variable "managed_identities" {
+  description = "User-assigned managed identities to create, keyed by short name."
+  type = map(object({
+    federated_credentials = optional(map(object({
+      issuer    = string
+      subject   = string
+      audiences = optional(list(string), ["api://AzureADTokenExchange"])
+    })), {})
+    role_assignments = optional(map(object({
+      scope                = string
+      role_definition_name = string
+    })), {})
+  }))
+  default = {}
+}
+
+variable "policy_assignments" {
+  description = "Azure Policy assignments for the test resource group."
+  type = map(object({
+    policy_definition_id = string
+    display_name         = string
+    description          = optional(string, null)
+    parameters           = optional(string, null)
+    location             = optional(string, null)
+    identity_type        = optional(string, null)
+  }))
+  default = {}
+}
