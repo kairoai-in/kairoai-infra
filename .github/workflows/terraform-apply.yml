@@ -104,6 +104,11 @@ jobs:
     needs: gate
     if: ${{ needs.gate.outputs.should_apply == 'true' }}
     environment: ${{ needs.gate.outputs.env_name }}
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ needs.gate.outputs.subscription_id }}
     steps:
       - uses: actions/checkout@v4
       - uses: azure/login@v2

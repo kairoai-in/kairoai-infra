@@ -119,6 +119,11 @@ jobs:
     name: Terraform Plan
     runs-on: ubuntu-latest
     needs: [context, terraform-security]
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ needs.context.outputs.subscription_id }}
     outputs:
       plan_artifact: terraform-plan-${{ needs.context.outputs.env_name }}
     steps:

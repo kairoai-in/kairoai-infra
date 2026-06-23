@@ -59,6 +59,13 @@ The federated Azure identity must have:
 - Hub state storage access for `rg-kairoai-tfstate-ci/stkairoaitfstateci`.
 - Any cross-subscription read permissions required for hub/spoke remote state and peering.
 
+The workflow exports AzureRM OIDC variables for Terraform:
+
+- `ARM_USE_OIDC=true`
+- `ARM_CLIENT_ID`
+- `ARM_TENANT_ID`
+- `ARM_SUBSCRIPTION_ID`
+
 Current secret status:
 
 - `AZURE_TENANT_ID` is configured for `kairoai-infra`.
