@@ -1,0 +1,166 @@
+name: Terraform Apply
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [hub, test, main]
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: read
+
+concurrency:
+  group: terraform-apply-${{ github.base_ref }}
+  cancel-in-progress: false
+
+env:
+  TERRAFORM_VERSION: "1.8.5"
+
+jobs:
+  gate:
+    name: Terraform Apply Gate
+    runs-on: ubuntu-latest
+    outputs:
+      should_apply: ${{ steps.gate.outputs.should_apply }}
+      env_name: ${{ steps.map.outputs.env_name }}
+      tf_dir: ${{ steps.map.outputs.tf_dir }}
+      subscription_id: ${{ steps.map.outputs.subscription_id }}
+      apply_label: ${{ steps.map.outputs.apply_label }}
+      author: ${{ steps.author.outputs.author }}
+      failure_reason: ${{ steps.gate.outputs.failure_reason }}
+    steps:
+      - name: Map branch to environment
+        id: map
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ github.base_ref }}" in
+            hub)
+              echo "env_name=hub" >> "$GITHUB_OUTPUT"
+              echo "tf_dir=environments/hub" >> "$GITHUB_OUTPUT"
+              echo "subscription_id=5b942f88-17e6-4026-ae23-d520365fb916" >> "$GITHUB_OUTPUT"
+              echo "apply_label=apply-hub" >> "$GITHUB_OUTPUT"
+              ;;
+            test)
+              echo "env_name=test" >> "$GITHUB_OUTPUT"
+              echo "tf_dir=environments/test" >> "$GITHUB_OUTPUT"
+              echo "subscription_id=6b01db76-626a-44a2-8119-17682410914a" >> "$GITHUB_OUTPUT"
+              echo "apply_label=apply-test" >> "$GITHUB_OUTPUT"
+              ;;
+            main)
+              echo "env_name=prod" >> "$GITHUB_OUTPUT"
+              echo "tf_dir=environments/prod" >> "$GITHUB_OUTPUT"
+              echo "subscription_id=a8270be7-dabc-4d92-98db-26a55025b0df" >> "$GITHUB_OUTPUT"
+              echo "apply_label=apply-prod" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported Terraform target branch: ${{ github.base_ref }}" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Resolve author
+        id: author
+        shell: bash
+        run: echo "author=${{ github.event.pull_request.user.login }}" >> "$GITHUB_OUTPUT"
+
+      - name: Check merge, label, and approval gate
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPLY_LABEL: ${{ steps.map.outputs.apply_label }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "should_apply=false" >> "$GITHUB_OUTPUT"
+
+          if [ "$MERGED" != "true" ]; then
+            echo "failure_reason=Pull request was closed without merge." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! jq -e --arg label "$APPLY_LABEL" 'index($label)' <<< "$LABELS_JSON" >/dev/null; then
+            echo "failure_reason=Missing required apply label: $APPLY_LABEL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          approved_count="$(gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}/reviews" --paginate --jq '[.[] | select(.state == "APPROVED") | .user.login] | unique | length')"
+          if [ "$approved_count" -lt 1 ]; then
+            echo "failure_reason=No approved PR review found." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "should_apply=true" >> "$GITHUB_OUTPUT"
+          echo "failure_reason=Apply gate passed." >> "$GITHUB_OUTPUT"
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: gate
+    if: ${{ needs.gate.outputs.should_apply == 'true' }}
+    environment: ${{ needs.gate.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ needs.gate.outputs.subscription_id }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: Terraform init
+        run: terraform -chdir=${{ needs.gate.outputs.tf_dir }} init -input=false
+      - name: Terraform plan for apply
+        run: terraform -chdir=${{ needs.gate.outputs.tf_dir }} plan -input=false -out=apply.tfplan
+      - name: Terraform apply
+        run: terraform -chdir=${{ needs.gate.outputs.tf_dir }} apply -input=false -auto-approve apply.tfplan
+
+  notify-gate-skipped:
+    name: Notify Terraform Apply Gate Skipped
+    runs-on: ubuntu-latest
+    needs: gate
+    if: ${{ needs.gate.outputs.should_apply != 'true' && needs.gate.outputs.failure_reason != 'Pull request was closed without merge.' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Send gate notification
+        uses: ./.github/actions/notification-action
+        with:
+          pipeline_name: Terraform Apply Gate - ${{ needs.gate.outputs.env_name }}
+          repository_name: ${{ github.repository }}
+          failure_reason: ${{ needs.gate.outputs.failure_reason }}
+          author: ${{ needs.gate.outputs.author }}
+          smtp_username: ${{ secrets.SMTP_USERNAME }}
+          smtp_password: ${{ secrets.SMTP_PASSWORD }}
+          mail_from: ${{ secrets.MAIL_FROM }}
+          mail_to: ${{ secrets.MAIL_TO }}
+          slack_webhook: ${{ secrets.SLACK_INCOMING_WEBHOOK }}
+          workflow_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          report_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  notify-apply-failure:
+    name: Notify Terraform Apply Failure
+    runs-on: ubuntu-latest
+    needs: [gate, terraform-apply]
+    if: ${{ always() && needs.gate.outputs.should_apply == 'true' && needs.terraform-apply.result == 'failure' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Send failure notification
+        uses: ./.github/actions/notification-action
+        with:
+          pipeline_name: Terraform Apply - ${{ needs.gate.outputs.env_name }}
+          repository_name: ${{ github.repository }}
+          failure_reason: Terraform apply failed after merge gate passed.
+          author: ${{ needs.gate.outputs.author }}
+          smtp_username: ${{ secrets.SMTP_USERNAME }}
+          smtp_password: ${{ secrets.SMTP_PASSWORD }}
+          mail_from: ${{ secrets.MAIL_FROM }}
+          mail_to: ${{ secrets.MAIL_TO }}
+          slack_webhook: ${{ secrets.SLACK_INCOMING_WEBHOOK }}
+          workflow_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          report_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

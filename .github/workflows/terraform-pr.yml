@@ -1,0 +1,192 @@
+name: Terraform PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [hub, test, main]
+    paths:
+      - "**/*.tf"
+      - "**/*.tfvars.example"
+      - "policies/**"
+      - ".github/workflows/terraform-*.yml"
+      - ".github/actions/**"
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: read
+
+concurrency:
+  group: terraform-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  TERRAFORM_VERSION: "1.8.5"
+  CONFTEST_VERSION: "0.56.0"
+
+jobs:
+  context:
+    name: Terraform Context
+    runs-on: ubuntu-latest
+    outputs:
+      env_name: ${{ steps.map.outputs.env_name }}
+      tf_dir: ${{ steps.map.outputs.tf_dir }}
+      subscription_id: ${{ steps.map.outputs.subscription_id }}
+      apply_label: ${{ steps.map.outputs.apply_label }}
+      author: ${{ steps.author.outputs.author }}
+    steps:
+      - name: Map branch to environment
+        id: map
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ github.base_ref }}" in
+            hub)
+              echo "env_name=hub" >> "$GITHUB_OUTPUT"
+              echo "tf_dir=environments/hub" >> "$GITHUB_OUTPUT"
+              echo "subscription_id=5b942f88-17e6-4026-ae23-d520365fb916" >> "$GITHUB_OUTPUT"
+              echo "apply_label=apply-hub" >> "$GITHUB_OUTPUT"
+              ;;
+            test)
+              echo "env_name=test" >> "$GITHUB_OUTPUT"
+              echo "tf_dir=environments/test" >> "$GITHUB_OUTPUT"
+              echo "subscription_id=6b01db76-626a-44a2-8119-17682410914a" >> "$GITHUB_OUTPUT"
+              echo "apply_label=apply-test" >> "$GITHUB_OUTPUT"
+              ;;
+            main)
+              echo "env_name=prod" >> "$GITHUB_OUTPUT"
+              echo "tf_dir=environments/prod" >> "$GITHUB_OUTPUT"
+              echo "subscription_id=a8270be7-dabc-4d92-98db-26a55025b0df" >> "$GITHUB_OUTPUT"
+              echo "apply_label=apply-prod" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported Terraform target branch: ${{ github.base_ref }}" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Resolve author
+        id: author
+        shell: bash
+        run: echo "author=${{ github.event.pull_request.user.login }}" >> "$GITHUB_OUTPUT"
+
+  terraform-fmt:
+    name: Terraform Format
+    runs-on: ubuntu-latest
+    needs: context
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    needs: [context, terraform-fmt]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: Init without backend
+        run: terraform -chdir=${{ needs.context.outputs.tf_dir }} init -backend=false
+      - name: Validate Terraform
+        run: terraform -chdir=${{ needs.context.outputs.tf_dir }} validate
+
+  terraform-security:
+    name: Terraform Security
+    runs-on: ubuntu-latest
+    needs: [context, terraform-validate]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Checkov
+        run: |
+          python -m pip install --upgrade pip
+          pip install checkov
+      - name: Run Checkov
+        run: >
+          checkov
+          --directory .
+          --framework terraform
+          --skip-path .terraform
+          --quiet
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: [context, terraform-security]
+    outputs:
+      plan_artifact: terraform-plan-${{ needs.context.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ needs.context.outputs.subscription_id }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: Terraform init
+        run: terraform -chdir=${{ needs.context.outputs.tf_dir }} init -input=false
+      - name: Terraform plan
+        run: terraform -chdir=${{ needs.context.outputs.tf_dir }} plan -input=false -out=tfplan
+      - name: Export plan JSON
+        run: terraform -chdir=${{ needs.context.outputs.tf_dir }} show -json tfplan > ${{ needs.context.outputs.tf_dir }}/tfplan.json
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-${{ needs.context.outputs.env_name }}
+          path: |
+            ${{ needs.context.outputs.tf_dir }}/tfplan
+            ${{ needs.context.outputs.tf_dir }}/tfplan.json
+
+  terraform-policy:
+    name: Terraform Policy
+    runs-on: ubuntu-latest
+    needs: [context, terraform-plan]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan-${{ needs.context.outputs.env_name }}
+          path: ${{ needs.context.outputs.tf_dir }}
+      - name: Install Conftest
+        run: |
+          curl -sSL "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz" -o conftest.tar.gz
+          tar -xzf conftest.tar.gz
+          sudo mv conftest /usr/local/bin/conftest
+      - name: Run OPA policies
+        run: conftest test ${{ needs.context.outputs.tf_dir }}/tfplan.json --policy policies/opa/terraform
+
+  notify-failure:
+    name: Notify Terraform PR Failure
+    runs-on: ubuntu-latest
+    needs:
+      - context
+      - terraform-fmt
+      - terraform-validate
+      - terraform-security
+      - terraform-plan
+      - terraform-policy
+    if: ${{ always() && contains(join(needs.*.result, ','), 'failure') }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Send failure notification
+        uses: ./.github/actions/notification-action
+        with:
+          pipeline_name: Terraform PR - ${{ needs.context.outputs.env_name }}
+          repository_name: ${{ github.repository }}
+          failure_reason: One or more Terraform PR checks failed. Review the first failed job because the pipeline is sequential and fail-fast.
+          author: ${{ needs.context.outputs.author }}
+          smtp_username: ${{ secrets.SMTP_USERNAME }}
+          smtp_password: ${{ secrets.SMTP_PASSWORD }}
+          mail_from: ${{ secrets.MAIL_FROM }}
+          mail_to: ${{ secrets.MAIL_TO }}
+          slack_webhook: ${{ secrets.SLACK_INCOMING_WEBHOOK }}
+          workflow_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          report_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
