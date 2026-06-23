@@ -82,7 +82,14 @@ Security note: `User Access Administrator` is powerful because it lets the workf
 
 ## Review Model
 
-The `reviewer` GitHub team owns the Terraform code through `.github/CODEOWNERS`. Branch protection requires one code owner review before merge. A pull request author generally cannot approve their own PR for required-review enforcement, so another reviewer should approve the change.
+Terraform code ownership is enforced through `.github/CODEOWNERS`. Branch protection requires one code owner review before merge. A pull request author generally cannot approve their own PR for required-review enforcement, so another reviewer should approve the change.
+
+Current bootstrap CODEOWNERS uses individual reviewers because GitHub team creation requires `admin:org` scope:
+
+- `@Elzabeth-L`
+- `@ElzabethOps`
+
+After refreshing GitHub CLI auth with `admin:org`, replace the CODEOWNERS line with `* @kairoai-in/reviewer`.
 
 ## GitHub Setup Status
 
@@ -103,4 +110,4 @@ Required GitHub setup before this is fully enforced:
 Current GitHub limitation observed during setup:
 
 - GitHub rejected branch protection on the private infra repo with: `Upgrade to GitHub Pro or make this repository public to enable this feature.`
-- Until that is resolved, the workflows still run, but GitHub will not enforce required status checks or code-owner review at the branch level.
+- The repo has been made public for bootstrap, and branch protection is now enabled for `main`, `test`, and `hub`.
