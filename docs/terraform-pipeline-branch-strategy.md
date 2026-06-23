@@ -59,6 +59,27 @@ The federated Azure identity must have:
 - Hub state storage access for `rg-kairoai-tfstate-ci/stkairoaitfstateci`.
 - Any cross-subscription read permissions required for hub/spoke remote state and peering.
 
+Current secret status:
+
+- `AZURE_TENANT_ID` is configured for `kairoai-infra`.
+- `SLACK_INCOMING_WEBHOOK` is configured for `kairoai-infra`.
+- `AZURE_CLIENT_ID` is pending until the GitHub OIDC Entra application is explicitly approved and created.
+
+Recommended OIDC identity:
+
+- Entra app name: `app-kairoai-terraform-github-actions`
+- Federated subjects:
+  - `repo:kairoai-in/kairoai-infra:pull_request`
+  - `repo:kairoai-in/kairoai-infra:ref:refs/heads/hub`
+  - `repo:kairoai-in/kairoai-infra:ref:refs/heads/test`
+  - `repo:kairoai-in/kairoai-infra:ref:refs/heads/main`
+- Minimum practical RBAC for current Terraform roots:
+  - `Contributor` on hub, test, and prod subscriptions.
+  - `Storage Blob Data Contributor` on the hub Terraform state storage account.
+  - `User Access Administrator` only if Terraform will continue creating role assignments itself.
+
+Security note: `User Access Administrator` is powerful because it lets the workflow grant Azure RBAC. Prefer separating RBAC bootstrap into a more restricted/manual path if we want a tighter production posture.
+
 ## Review Model
 
 The `reviewer` GitHub team owns the Terraform code through `.github/CODEOWNERS`. Branch protection requires one code owner review before merge. A pull request author generally cannot approve their own PR for required-review enforcement, so another reviewer should approve the change.
