@@ -69,7 +69,7 @@ resource "azurerm_cdn_frontdoor_origin" "this" {
   enabled                       = true
 
   certificate_name_check_enabled = each.value.forwarding_protocol == "HttpsOnly"
-  host_name                      = var.origin_host_name
+  host_name                      = each.value.origin_host_name
   http_port                      = 80
   https_port                     = 443
   origin_host_header             = each.value.origin_host_header
@@ -122,7 +122,7 @@ resource "azurerm_monitor_diagnostic_setting" "this" {
 }
 
 resource "azurerm_monitor_metric_alert" "origin_health_low" {
-  count = var.action_group_id == null ? 0 : 1
+  count = var.metric_alerts_enabled ? 1 : 0
 
   name                = "alert-${var.profile_name}-origin-health-low"
   resource_group_name = var.resource_group_name
@@ -148,7 +148,7 @@ resource "azurerm_monitor_metric_alert" "origin_health_low" {
 }
 
 resource "azurerm_monitor_metric_alert" "latency_high" {
-  count = var.action_group_id == null ? 0 : 1
+  count = var.metric_alerts_enabled ? 1 : 0
 
   name                = "alert-${var.profile_name}-latency-high"
   resource_group_name = var.resource_group_name

@@ -24,15 +24,11 @@ variable "dns_zone_id" {
   type        = string
 }
 
-variable "origin_host_name" {
-  description = "Origin host name, normally Application Gateway public IP address or frontend host."
-  type        = string
-}
-
 variable "routes" {
   description = "Front Door routes keyed by logical route name."
   type = map(object({
     host_name              = string
+    origin_host_name       = string
     origin_host_header     = string
     patterns_to_match      = optional(list(string), ["/*"])
     health_probe_path      = optional(string, "/health")
@@ -60,6 +56,12 @@ variable "action_group_id" {
   description = "Optional Azure Monitor action group ID for Front Door alerts."
   type        = string
   default     = null
+}
+
+variable "metric_alerts_enabled" {
+  description = "Create Front Door metric alerts. Set true only when action_group_id is provided."
+  type        = bool
+  default     = false
 }
 
 variable "origin_health_threshold" {

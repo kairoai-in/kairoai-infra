@@ -63,3 +63,63 @@ variable "public_network_access_enabled" {
   type        = bool
   default     = true
 }
+
+variable "test_state_resource_group_name" {
+  description = "Resource group containing test Terraform state."
+  type        = string
+  default     = "rg-kairoai-tfstate-ci"
+}
+
+variable "test_state_storage_account_name" {
+  description = "Storage account containing test Terraform state."
+  type        = string
+  default     = "stkairoaitfstateci"
+}
+
+variable "test_state_container_name" {
+  description = "Blob container containing test Terraform state."
+  type        = string
+  default     = "testtfstate"
+}
+
+variable "test_state_key" {
+  description = "Test Terraform state key."
+  type        = string
+  default     = "kairoai/test/terraform.tfstate"
+}
+
+variable "prod_state_resource_group_name" {
+  description = "Resource group containing prod Terraform state."
+  type        = string
+  default     = "rg-kairoai-tfstate-ci"
+}
+
+variable "prod_state_storage_account_name" {
+  description = "Storage account containing prod Terraform state."
+  type        = string
+  default     = "stkairoaitfstateci"
+}
+
+variable "prod_state_container_name" {
+  description = "Blob container containing prod Terraform state."
+  type        = string
+  default     = "prodtfstate"
+}
+
+variable "prod_state_key" {
+  description = "Prod Terraform state key."
+  type        = string
+  default     = "kairoai/prod/terraform.tfstate"
+}
+
+variable "front_door_sku_name" {
+  description = "Shared Azure Front Door SKU."
+  type        = string
+  default     = "Premium_AzureFrontDoor"
+}
+
+variable "alert_email" {
+  description = "Optional email receiver for hub/shared alerts."
+  type        = string
+  default     = ""
+}

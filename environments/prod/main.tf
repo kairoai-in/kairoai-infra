@@ -75,12 +75,6 @@ data "azurerm_container_registry" "hub" {
   resource_group_name = data.terraform_remote_state.hub.outputs.resource_group_name
 }
 
-data "azurerm_dns_zone" "public" {
-  provider            = azurerm.hub
-  name                = "kairoai.in"
-  resource_group_name = data.terraform_remote_state.hub.outputs.resource_group_name
-}
-
 module "naming" {
   source = "../../modules/naming"
 
@@ -254,73 +248,6 @@ module "app_gateway_waf" {
   log_analytics_workspace_id = module.monitor.log_analytics_workspace_id
   action_group_id            = azurerm_monitor_action_group.platform.id
   tags                       = local.tags
-}
-
-module "front_door" {
-  source = "../../modules/front-door"
-  count  = var.enable_front_door ? 1 : 0
-
-  profile_name        = local.names.front_door_profile
-  endpoint_name       = local.names.front_door_endpoint
-  resource_group_name = module.resource_group.name
-  sku_name            = var.front_door_sku_name
-  dns_zone_id         = data.azurerm_dns_zone.public.id
-  origin_host_name    = module.app_gateway_waf[0].public_ip_address
-  routes = {
-    dashboard = {
-      host_name          = local.names.front_door_host
-      origin_host_header = local.names.front_door_host
-    }
-    api = {
-      host_name          = local.names.front_door_api_host
-      origin_host_header = local.names.front_door_api_host
-    }
-  }
-  log_analytics_workspace_id = module.monitor.log_analytics_workspace_id
-  action_group_id            = azurerm_monitor_action_group.platform.id
-  tags                       = local.tags
-}
-
-resource "azurerm_dns_a_record" "front_door_apex" {
-  provider = azurerm.hub
-  count    = var.enable_front_door ? 1 : 0
-
-  name                = "@"
-  zone_name           = data.azurerm_dns_zone.public.name
-  resource_group_name = data.terraform_remote_state.hub.outputs.resource_group_name
-  ttl                 = 300
-  target_resource_id  = module.front_door[0].endpoint_id
-  tags                = local.tags
-}
-
-resource "azurerm_dns_cname_record" "front_door_api" {
-  provider = azurerm.hub
-  count    = var.enable_front_door ? 1 : 0
-
-  name                = "api"
-  zone_name           = data.azurerm_dns_zone.public.name
-  resource_group_name = data.terraform_remote_state.hub.outputs.resource_group_name
-  ttl                 = 300
-  record              = module.front_door[0].endpoint_host_name
-  tags                = local.tags
-}
-
-resource "azurerm_dns_txt_record" "front_door_domain_validation" {
-  provider = azurerm.hub
-  for_each = var.enable_front_door ? {
-    "_dnsauth"     = module.front_door[0].custom_domain_validation_tokens.dashboard
-    "_dnsauth.api" = module.front_door[0].custom_domain_validation_tokens.api
-  } : {}
-
-  name                = each.key
-  zone_name           = data.azurerm_dns_zone.public.name
-  resource_group_name = data.terraform_remote_state.hub.outputs.resource_group_name
-  ttl                 = 300
-  tags                = local.tags
-
-  record {
-    value = each.value
-  }
 }
 
 module "ai_foundry" {

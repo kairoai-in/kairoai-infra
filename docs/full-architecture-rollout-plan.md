@@ -1,6 +1,6 @@
 # Full Architecture Rollout Plan
 
-Last updated: `2026-06-23 13:45:00 +05:30`
+Last updated: `2026-06-23 17:47:56 +05:30`
 
 This document treats KairoAI infrastructure as one complete architecture, not as isolated resources. Terraform still applies in dependency-safe waves because Azure resources depend on each other across subscriptions, but each wave belongs to the same target design.
 
@@ -22,9 +22,9 @@ Internet
 
 | Subscription | Owns | Reason |
 | --- | --- | --- |
-| Hub | Terraform state, ACR, public DNS zone, private DNS zones, shared Key Vault, hub VNet, future global Front Door/security resources | Centralized shared services and cross-environment control plane. |
+| Hub | Terraform state, ACR, public DNS zone, private DNS zones, shared Key Vault, hub VNet, shared global Front Door/security resources | Centralized shared services and cross-environment control plane. |
 | Test spoke | Test VNet, AKS, App Gateway WAF, PostgreSQL, Key Vault, Service Bus, monitoring, AI Foundry test, workload identities, policy assignments | End-to-end validation before production. |
-| Prod spoke | Production VNet, AKS, App Gateway WAF, PostgreSQL, Key Vault, Service Bus, monitoring, AI Services, Front Door, optional workload identities/policy gates | Production runtime in Central India with the AI account placed in South India for available pay-as-you-go model quota. |
+| Prod spoke | Production VNet, AKS, App Gateway WAF, PostgreSQL, Key Vault, Service Bus, monitoring, AI Services, optional workload identities/policy gates | Production runtime in Central India with the AI account placed in South India for available pay-as-you-go model quota. |
 | Prod DR | DR VNet, Key Vault recovery, DR observability, optional database/failover and warm standby AKS/App Gateway | Level 2 demo DR in South India, upgradeable to Level 3. |
 
 ## Diagram Resource Inventory
@@ -60,7 +60,10 @@ Users / GitHub
 | Registry | Azure Container Registry | `acrkairoaihubci` | Live | Shared image registry for test/prod/prod-dr. |
 | Secrets | Key Vault | `kv-kairoai-hub-ci` | Live | Shared control-plane certificates and automation references only; never stores test/prod workload secrets. |
 | Observability | Log Analytics | `law-kairoai-hub-ci` | Live | Hub control-plane logs. |
-| Edge | Azure Front Door Premium | `afd-kairoai-*-*` / endpoints `fde-kairoai-*-*` | Planned | Global public entry before regional App Gateway. |
+| Edge | Azure Front Door Premium | `afd-kairoai-global` / `fde-kairoai-global-abbxdsduhdbbe5dy.z02.azurefd.net` | Live | Shared global public entry before regional App Gateways. Routes `kairoai.in` and `api.kairoai.in` to prod; routes `test.kairoai.in` and `test-api.kairoai.in` to test. |
+| DNS | Front Door DNS records | `@`, `api`, `test`, `test-api`, `_dnsauth*` in `kairoai.in` | Live | Apex A alias and subdomain CNAMEs point to the shared Front Door endpoint; TXT records validate managed certificates. |
+| Observability | Front Door diagnostic setting | `diag-afd-kairoai-global` | Live | Sends Front Door access and health probe logs to hub Log Analytics. |
+| Observability | Front Door alerts | `alert-afd-kairoai-global-origin-health-low`, `alert-afd-kairoai-global-latency-high` | Live | Shared global edge health and latency alerts. |
 | Security | Azure Firewall | TBD | Deferred | Add if budget allows centralized egress/inspection. |
 | Operations | Azure Bastion | TBD | Deferred | Add if private operations require browser SSH/RDP. |
 
@@ -82,7 +85,7 @@ Users / GitHub
 | Edge | Public IP | `pip-kairoai-test-ci` | Live | App Gateway frontend IP. |
 | Edge | Application Gateway WAF | `agw-kairoai-test-ci` | Live | Regional WAF before AKS. |
 | Edge | WAF policy | `policy-agw-kairoai-test-ci` | Live | OWASP managed rules in Prevention mode. |
-| Edge | Front Door | `afd-kairoai-test-ci` | Planned | Route `test.kairoai.in` and `api.test.kairoai.in`. |
+| Edge | Front Door route | Shared hub `afd-kairoai-global` | Live | Hub route maps `test.kairoai.in` and `test-api.kairoai.in` to test App Gateway `13.71.2.80`. |
 | Data | PostgreSQL Flexible Server | `psql-kairoai-test-ci` | Live | Private database server. |
 | Data | PostgreSQL database | `kairoai` | Live | App database. |
 | Messaging | Service Bus namespace | `sb-kairoai-test-ci` | Live | Async app messaging. |
@@ -119,8 +122,7 @@ Users / GitHub
 | Edge | Public IP | `pip-kairoai-prod-ci` `20.219.35.127` | Live | App Gateway frontend IP. |
 | Edge | Application Gateway WAF | `agw-kairoai-prod-ci` | Live | Regional WAF before AKS. |
 | Edge | WAF policy | `policy-agw-kairoai-prod-ci` | Live | OWASP managed rules in Prevention mode. |
-| Edge | Front Door | `afd-kairoai-prod-ci` / `fde-kairoai-prod-ci-g7fuaudnczb6epfx.z01.azurefd.net` | Live | Routes `kairoai.in` and `api.kairoai.in` to App Gateway WAF with separate host headers. |
-| DNS | Public DNS records | `@`, `api`, `_dnsauth`, `_dnsauth.api` in Azure DNS zone `kairoai.in` | Live in Azure DNS | GoDaddy must delegate to Azure DNS nameservers before public traffic and managed certificates validate. |
+| Edge | Front Door route | Shared hub `afd-kairoai-global` | Live | Hub route maps `kairoai.in` and `api.kairoai.in` to prod App Gateway `20.219.35.127` with separate host headers. |
 | Data | PostgreSQL Flexible Server | `psql-kairoai-prod-ci` | Live | Production app database. |
 | Data | PostgreSQL database | `kairoai` | Live | App database. |
 | Messaging | Service Bus namespace | `sb-kairoai-prod-ci` | Live | Premium async messaging with capacity `1` and partition `1`. |
@@ -200,7 +202,7 @@ Reason:
 
 ### Wave 1 - Hub Foundation
 
-Status: live for foundation; firewall, bastion, and Front Door still planned/deferred.
+Status: live for foundation and shared Front Door; firewall and bastion still deferred.
 
 Creates:
 
@@ -210,10 +212,10 @@ Creates:
 - ACR `acrkairoaihubci`.
 - Hub Key Vault.
 - Hub Log Analytics.
+- Shared Azure Front Door global profile, endpoint, prod/test routes, DNS records, diagnostics, and alerts.
 
 Remaining:
 
-- Azure Front Door global profile and routes.
 - Azure Firewall and Bastion if budget/operations require them.
 - Private endpoints and stricter public network lock-down after private connectivity is fully validated.
 
@@ -239,13 +241,13 @@ Live:
 
 Remaining:
 
-- Front Door route for `test.kairoai.in` and `api.test.kairoai.in`.
+- Test application ingress host rules for `test.kairoai.in` and `test-api.kairoai.in`, if not already deployed.
 - AGIC or ingress integration between AKS and App Gateway.
 - Private endpoints for Key Vault, Service Bus, ACR, Monitor, and any remaining PaaS resources.
 - Azure AI Foundry / AI Services deployment.
 - Workload identities for each application service.
 - Azure Policy baseline assignments.
-- Diagnostic settings and alerts for App Gateway and Front Door.
+- Diagnostic settings and alerts for App Gateway.
 - Application deployment via Helm/Argo path.
 
 Reason:
@@ -279,8 +281,7 @@ Applied production runtime wave 1:
 - Entra group `grp-kairoai-platform-admins` assigned AKS RBAC Cluster Admin for data-plane operations.
 - Azure AI Services account `oai-kairoai-prod-si` with GPT-5.4 primary and GPT-5.4-mini fallback deployments.
 - AI endpoint, account key, API version, and primary deployment name stored in production Key Vault.
-- Azure Front Door Premium profile, endpoint, two custom domains, route diagnostics, and edge alerts.
-- Azure DNS records for Front Door apex/API routing and managed certificate validation.
+- Shared hub Front Door routes for production apex/API hostnames.
 
 Feature-gated for reviewed enablement:
 
@@ -351,7 +352,7 @@ Reason:
 | ACR | Live shared ACR | Pulls from hub ACR | Pulls from hub ACR | Pulls from hub ACR |
 | AKS | N/A | Live | Live | Optional Level 3 |
 | App Gateway WAF | N/A | Live | Live | Optional Level 3 |
-| Front Door | Planned shared/global expansion | Planned test route | Live prod route | Planned failover route |
+| Front Door | Live shared/global profile and DNS | Live shared test routes | Live shared prod routes | Planned failover route |
 | PostgreSQL | N/A | Live | Live | Feature-gated DR database/failover |
 | Service Bus | N/A | Live | Live | Feature-gated DR namespace |
 | Key Vault | Live shared hub KV | Live | Live | Live recovery foundation |
@@ -394,18 +395,17 @@ Saved plan status:
 
 | Root | Saved plan | Create | Update | Delete | Notes |
 | --- | --- | ---: | ---: | ---: | --- |
-| `hub` | `hub-full-architecture.tfplan` | 0 | 0 | 0 | Existing hub remains unchanged. |
+| `hub` | Latest plain plan | 0 | 0 | 0 | Shared Front Door, DNS, diagnostics, and alerts are applied and clean. |
 | `test` | `test-full-architecture.tfplan` | 0 | 0 | 0 | Test observability is applied and clean. |
-| `prod` | Latest plain plan | 0 | 0 | 0 | Production AKS, App Gateway WAF, AI Services, Front Door, and Azure DNS records are applied and clean. |
+| `prod` | Latest plain plan | 0 | 0 | 0 | Production AKS, App Gateway WAF, and AI Services are applied and clean; shared edge is owned by hub. |
 | `prod-dr` | `prod-dr-full-architecture.tfplan` | 0 | 0 | 0 | Level 2 DR foundation is applied and clean; warm runtime is gated off. |
 
 ## Immediate Next Implementation Step
 
-1. Delegate `kairoai.in` from GoDaddy to Azure DNS nameservers: `ns1-05.azure-dns.com.`, `ns2-05.azure-dns.net.`, `ns3-05.azure-dns.org.`, `ns4-05.azure-dns.info.`.
-2. Re-check Front Door custom domain validation until `kairoai.in` and `api.kairoai.in` move from `Pending` to approved/enabled.
-3. Probe `https://kairoai.in/health` and `https://api.kairoai.in/health` through Front Door.
-4. Wire Azure Policy definitions into assignment pipelines after test audit mode is confirmed.
-5. Add private endpoints and tighten public network access once application connectivity is validated.
+1. Wait for Front Door custom domain `deploymentStatus` to complete for `kairoai.in`, `api.kairoai.in`, `test.kairoai.in`, and `test-api.kairoai.in`.
+2. Probe `https://kairoai.in/health`, `https://api.kairoai.in/health`, `https://test.kairoai.in/health`, and `https://test-api.kairoai.in/health` through shared Front Door.
+3. Wire Azure Policy definitions into assignment pipelines after test audit mode is confirmed.
+4. Add private endpoints and tighten public network access once application connectivity is validated.
 
 ## Safety Rules
 

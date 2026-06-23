@@ -79,16 +79,6 @@ output "agic_identity_object_id" {
   value       = var.enable_aks && var.enable_app_gateway_waf ? module.aks[0].agic_identity_object_id : null
 }
 
-output "front_door_endpoint_host_name" {
-  description = "Prod Front Door endpoint hostname when enabled."
-  value       = var.enable_front_door ? module.front_door[0].endpoint_host_name : null
-}
-
-output "front_door_custom_domain_validation_tokens" {
-  description = "Front Door managed certificate validation tokens keyed by route name."
-  value       = var.enable_front_door ? module.front_door[0].custom_domain_validation_tokens : {}
-}
-
 output "ai_foundry_endpoint" {
   description = "Prod Azure AI Services endpoint when enabled."
   value       = var.enable_ai_foundry ? module.ai_foundry[0].endpoint : null

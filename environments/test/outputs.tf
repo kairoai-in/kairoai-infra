@@ -89,11 +89,6 @@ output "app_gateway_public_ip_address" {
   value       = var.enable_app_gateway_waf ? module.app_gateway_waf[0].public_ip_address : null
 }
 
-output "front_door_endpoint_host_name" {
-  description = "Front Door endpoint hostname when enabled."
-  value       = var.enable_front_door ? module.front_door[0].endpoint_host_name : null
-}
-
 output "ai_foundry_endpoint" {
   description = "Azure AI Services endpoint when enabled."
   value       = var.enable_ai_foundry ? module.ai_foundry[0].endpoint : null

@@ -196,12 +196,6 @@ variable "enable_app_gateway_waf" {
   default     = true
 }
 
-variable "enable_front_door" {
-  description = "Create Azure Front Door route resources for production."
-  type        = bool
-  default     = true
-}
-
 variable "enable_ai_foundry" {
   description = "Create Azure AI Services / AI Foundry account and model deployments."
   type        = bool
@@ -230,12 +224,6 @@ variable "app_gateway_max_capacity" {
   description = "Maximum Application Gateway autoscale capacity."
   type        = number
   default     = 3
-}
-
-variable "front_door_sku_name" {
-  description = "Azure Front Door SKU."
-  type        = string
-  default     = "Premium_AzureFrontDoor"
 }
 
 variable "ai_foundry_sku_name" {
