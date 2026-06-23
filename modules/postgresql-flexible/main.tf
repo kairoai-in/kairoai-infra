@@ -43,3 +43,15 @@ resource "azurerm_key_vault_secret" "admin_password" {
   value        = random_password.admin.result
   key_vault_id = var.key_vault_id
 }
+
+resource "azurerm_key_vault_secret" "database_url" {
+  name = var.database_url_secret_name
+  value = format(
+    "postgresql+psycopg://%s:%s@%s:5432/%s?sslmode=require",
+    var.administrator_login,
+    urlencode(random_password.admin.result),
+    azurerm_postgresql_flexible_server.this.fqdn,
+    azurerm_postgresql_flexible_server_database.this.name,
+  )
+  key_vault_id = var.key_vault_id
+}

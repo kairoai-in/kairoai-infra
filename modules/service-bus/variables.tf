@@ -37,6 +37,17 @@ variable "queues" {
   default     = []
 }
 
+variable "authorization_rules" {
+  description = "Queue-scoped authorization rules keyed by rule name."
+  type = map(object({
+    queue_name = string
+    listen     = optional(bool, false)
+    send       = optional(bool, false)
+    manage     = optional(bool, false)
+  }))
+  default = {}
+}
+
 variable "tags" {
   description = "Resource tags."
   type        = map(string)

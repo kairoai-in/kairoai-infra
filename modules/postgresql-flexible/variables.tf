@@ -68,6 +68,12 @@ variable "key_vault_secret_name" {
   default     = "postgres-admin-password"
 }
 
+variable "database_url_secret_name" {
+  description = "Key Vault secret name for the generated SQLAlchemy database URL."
+  type        = string
+  default     = "database-url"
+}
+
 variable "tags" {
   description = "Resource tags."
   type        = map(string)

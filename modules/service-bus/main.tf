@@ -22,3 +22,13 @@ resource "azurerm_servicebus_queue" "this" {
   name         = each.value
   namespace_id = azurerm_servicebus_namespace.this.id
 }
+
+resource "azurerm_servicebus_queue_authorization_rule" "this" {
+  for_each = var.authorization_rules
+
+  name     = each.key
+  queue_id = azurerm_servicebus_queue.this[each.value.queue_name].id
+  listen   = each.value.listen
+  send     = each.value.send
+  manage   = each.value.manage
+}

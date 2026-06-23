@@ -169,7 +169,20 @@ module "service_bus" {
   capacity                     = var.service_bus_capacity
   premium_messaging_partitions = var.service_bus_premium_messaging_partitions
   queues                       = ["review-analysis", "review-jobs", "analysis-results"]
+  authorization_rules = {
+    review-runtime = {
+      queue_name = "review-analysis"
+      listen     = true
+      send       = true
+    }
+  }
   tags                         = local.tags
+}
+
+resource "azurerm_key_vault_secret" "service_bus_connection_string" {
+  name         = "service-bus-connection-string"
+  value        = module.service_bus.authorization_rule_primary_connection_strings["review-runtime"]
+  key_vault_id = module.key_vault.id
 }
 
 module "postgresql" {
