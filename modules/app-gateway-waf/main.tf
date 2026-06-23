@@ -119,6 +119,7 @@ resource "azurerm_application_gateway" "this" {
       request_routing_rule,
       redirect_configuration,
       rewrite_rule_set,
+      tags["managed-by-k8s-ingress"],
       url_path_map,
     ]
   }

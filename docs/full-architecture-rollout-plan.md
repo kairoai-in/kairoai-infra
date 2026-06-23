@@ -1,6 +1,6 @@
 # Full Architecture Rollout Plan
 
-Last updated: `2026-06-23 12:00:00 +05:30`
+Last updated: `2026-06-23 13:45:00 +05:30`
 
 This document treats KairoAI infrastructure as one complete architecture, not as isolated resources. Terraform still applies in dependency-safe waves because Azure resources depend on each other across subscriptions, but each wave belongs to the same target design.
 
@@ -24,7 +24,7 @@ Internet
 | --- | --- | --- |
 | Hub | Terraform state, ACR, public DNS zone, private DNS zones, shared Key Vault, hub VNet, future global Front Door/security resources | Centralized shared services and cross-environment control plane. |
 | Test spoke | Test VNet, AKS, App Gateway WAF, PostgreSQL, Key Vault, Service Bus, monitoring, AI Foundry test, workload identities, policy assignments | End-to-end validation before production. |
-| Prod spoke | Production VNet, AKS, App Gateway WAF, PostgreSQL, Key Vault, Service Bus, monitoring, AI Services, optional Front Door/workload identities/policy gates | Production runtime in Central India with the AI account placed in South India for available pay-as-you-go model quota. |
+| Prod spoke | Production VNet, AKS, App Gateway WAF, PostgreSQL, Key Vault, Service Bus, monitoring, AI Services, Front Door, optional workload identities/policy gates | Production runtime in Central India with the AI account placed in South India for available pay-as-you-go model quota. |
 | Prod DR | DR VNet, Key Vault recovery, DR observability, optional database/failover and warm standby AKS/App Gateway | Level 2 demo DR in South India, upgradeable to Level 3. |
 
 ## Diagram Resource Inventory
@@ -119,7 +119,8 @@ Users / GitHub
 | Edge | Public IP | `pip-kairoai-prod-ci` `20.219.35.127` | Live | App Gateway frontend IP. |
 | Edge | Application Gateway WAF | `agw-kairoai-prod-ci` | Live | Regional WAF before AKS. |
 | Edge | WAF policy | `policy-agw-kairoai-prod-ci` | Live | OWASP managed rules in Prevention mode. |
-| Edge | Front Door | `afd-kairoai-prod-ci` / `fde-kairoai-prod-ci` | Feature-gated | Routes `kairoai.in` and `api.kairoai.in`. |
+| Edge | Front Door | `afd-kairoai-prod-ci` / `fde-kairoai-prod-ci-g7fuaudnczb6epfx.z01.azurefd.net` | Live | Routes `kairoai.in` and `api.kairoai.in` to App Gateway WAF with separate host headers. |
+| DNS | Public DNS records | `@`, `api`, `_dnsauth`, `_dnsauth.api` in Azure DNS zone `kairoai.in` | Live in Azure DNS | GoDaddy must delegate to Azure DNS nameservers before public traffic and managed certificates validate. |
 | Data | PostgreSQL Flexible Server | `psql-kairoai-prod-ci` | Live | Production app database. |
 | Data | PostgreSQL database | `kairoai` | Live | App database. |
 | Messaging | Service Bus namespace | `sb-kairoai-prod-ci` | Live | Premium async messaging with capacity `1` and partition `1`. |
@@ -278,13 +279,14 @@ Applied production runtime wave 1:
 - Entra group `grp-kairoai-platform-admins` assigned AKS RBAC Cluster Admin for data-plane operations.
 - Azure AI Services account `oai-kairoai-prod-si` with GPT-5.4 primary and GPT-5.4-mini fallback deployments.
 - AI endpoint, account key, API version, and primary deployment name stored in production Key Vault.
+- Azure Front Door Premium profile, endpoint, two custom domains, route diagnostics, and edge alerts.
+- Azure DNS records for Front Door apex/API routing and managed certificate validation.
 
 Feature-gated for reviewed enablement:
 
 - Azure Monitor workspace and Managed Grafana integration if prod-specific dashboards are required.
 - Managed identities and federated credentials.
 - Policy assignments.
-- Front Door production routes for `kairoai.in` and `api.kairoai.in`.
 
 Reason:
 
@@ -349,7 +351,7 @@ Reason:
 | ACR | Live shared ACR | Pulls from hub ACR | Pulls from hub ACR | Pulls from hub ACR |
 | AKS | N/A | Live | Live | Optional Level 3 |
 | App Gateway WAF | N/A | Live | Live | Optional Level 3 |
-| Front Door | Planned global | Planned test route | Planned prod route | Planned failover route |
+| Front Door | Planned shared/global expansion | Planned test route | Live prod route | Planned failover route |
 | PostgreSQL | N/A | Live | Live | Feature-gated DR database/failover |
 | Service Bus | N/A | Live | Live | Feature-gated DR namespace |
 | Key Vault | Live shared hub KV | Live | Live | Live recovery foundation |
@@ -394,14 +396,14 @@ Saved plan status:
 | --- | --- | ---: | ---: | ---: | --- |
 | `hub` | `hub-full-architecture.tfplan` | 0 | 0 | 0 | Existing hub remains unchanged. |
 | `test` | `test-full-architecture.tfplan` | 0 | 0 | 0 | Test observability is applied and clean. |
-| `prod` | Latest plain plan | 0 | 0 | 0 | Production AKS, App Gateway WAF, and AI Services are applied and clean; Front Door remains gated off. |
+| `prod` | Latest plain plan | 0 | 0 | 0 | Production AKS, App Gateway WAF, AI Services, Front Door, and Azure DNS records are applied and clean. |
 | `prod-dr` | `prod-dr-full-architecture.tfplan` | 0 | 0 | 0 | Level 2 DR foundation is applied and clean; warm runtime is gated off. |
 
 ## Immediate Next Implementation Step
 
-1. Materialize production Kubernetes runtime secrets from Key Vault without committing secret values.
-2. Deploy the immutable application images and ingress resources with class `azure-application-gateway` so AGIC can configure App Gateway backends.
-3. Verify application health through App Gateway before enabling Front Door origins and routes for `kairoai.in` and `api.kairoai.in`.
+1. Delegate `kairoai.in` from GoDaddy to Azure DNS nameservers: `ns1-05.azure-dns.com.`, `ns2-05.azure-dns.net.`, `ns3-05.azure-dns.org.`, `ns4-05.azure-dns.info.`.
+2. Re-check Front Door custom domain validation until `kairoai.in` and `api.kairoai.in` move from `Pending` to approved/enabled.
+3. Probe `https://kairoai.in/health` and `https://api.kairoai.in/health` through Front Door.
 4. Wire Azure Policy definitions into assignment pipelines after test audit mode is confirmed.
 5. Add private endpoints and tighten public network access once application connectivity is validated.
 

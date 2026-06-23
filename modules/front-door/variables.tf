@@ -19,20 +19,26 @@ variable "sku_name" {
   default     = "Premium_AzureFrontDoor"
 }
 
+variable "dns_zone_id" {
+  description = "Azure DNS zone ID for validating Front Door managed custom domains."
+  type        = string
+}
+
 variable "origin_host_name" {
-  description = "Origin host name, normally Application Gateway public IP DNS or frontend host."
+  description = "Origin host name, normally Application Gateway public IP address or frontend host."
   type        = string
 }
 
-variable "origin_host_header" {
-  description = "Host header sent to the origin."
-  type        = string
-}
-
-variable "patterns_to_match" {
-  description = "Route path patterns."
-  type        = list(string)
-  default     = ["/*"]
+variable "routes" {
+  description = "Front Door routes keyed by logical route name."
+  type = map(object({
+    host_name              = string
+    origin_host_header     = string
+    patterns_to_match      = optional(list(string), ["/*"])
+    health_probe_path      = optional(string, "/health")
+    forwarding_protocol    = optional(string, "HttpOnly")
+    link_to_default_domain = optional(bool, false)
+  }))
 }
 
 variable "log_analytics_workspace_id" {

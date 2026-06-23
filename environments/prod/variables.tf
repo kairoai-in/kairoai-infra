@@ -199,7 +199,7 @@ variable "enable_app_gateway_waf" {
 variable "enable_front_door" {
   description = "Create Azure Front Door route resources for production."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_ai_foundry" {

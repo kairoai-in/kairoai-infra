@@ -33,7 +33,7 @@ aks_cluster_admin_principal_ids = ["351af7b8-31dd-4186-a7bc-c2f38a79d242"]
 # Production runtime wave 1 is live. Front Door and AI remain off until reviewed.
 enable_aks             = true
 enable_app_gateway_waf = true
-enable_front_door      = false
+enable_front_door      = true
 enable_ai_foundry      = true
 
 app_gateway_min_capacity = 1

@@ -84,6 +84,11 @@ output "front_door_endpoint_host_name" {
   value       = var.enable_front_door ? module.front_door[0].endpoint_host_name : null
 }
 
+output "front_door_custom_domain_validation_tokens" {
+  description = "Front Door managed certificate validation tokens keyed by route name."
+  value       = var.enable_front_door ? module.front_door[0].custom_domain_validation_tokens : {}
+}
+
 output "ai_foundry_endpoint" {
   description = "Prod Azure AI Services endpoint when enabled."
   value       = var.enable_ai_foundry ? module.ai_foundry[0].endpoint : null

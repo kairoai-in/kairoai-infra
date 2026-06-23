@@ -1,6 +1,6 @@
 # Resource Inventory and Decisions
 
-Last updated: `2026-06-23 00:42:00 +05:30`
+Last updated: `2026-06-23 13:45:00 +05:30`
 
 This file is the practical inventory for where KairoAI Azure resources live, why they exist, and whether they are live or planned. The high-level architecture remains in `azure-hub-spoke-blueprint.md`; this file is the operator-friendly companion.
 
@@ -26,7 +26,7 @@ This file is the practical inventory for where KairoAI Azure resources live, why
 | ACR | `acrkairoaihubci` | Live | Shared container registry for service images across environments. |
 | Key Vault | `kv-kairoai-hub-ci` | Live | Shared hub secrets and future shared certificates. |
 | Log Analytics | `law-kairoai-hub-ci` | Live | Hub logging workspace. |
-| Front Door | `afd-kairoai-*-*` | Planned | Global entry point in the required path: Internet -> Front Door -> App Gateway WAF -> AKS. |
+| Front Door | `afd-kairoai-prod-ci` | Live for prod | Global entry point in the required path: Internet -> Front Door -> App Gateway WAF -> AKS. Managed custom domains remain pending until GoDaddy delegates `kairoai.in` to Azure DNS. |
 | Azure Firewall/Bastion | TBD by module plan | Planned/deferred | Centralized security/operations controls; deferred for cost and sequencing. |
 
 ## Test Subscription Resources
@@ -62,11 +62,11 @@ This file is the practical inventory for where KairoAI Azure resources live, why
 
 ## Prod and DR Subscription Resources
 
-Production and prod-dr foundation resources are now created and verified with no-change Terraform plans. Production AKS and Application Gateway WAF are live. Front Door, AI Foundry, managed identities, and policy assignments remain feature-gated.
+Production and prod-dr foundation resources are now created and verified with no-change Terraform plans. Production AKS, Application Gateway WAF, Front Door, AI Services, and Azure DNS records are live. Managed identities and policy assignments remain feature-gated.
 
 | Scope | Planned Resources | Reason |
 | --- | --- | --- |
-| Prod primary | RG, VNet/subnets, hub peering, private DNS links, PostgreSQL Flexible Server, Key Vault, Service Bus, Monitor, Application Insights, AKS, App Gateway WAF, WAF policy, App Gateway diagnostics, and edge alerts are live; optional gated Front Door, AI Foundry, managed identities, and policy assignments remain planned | Production deployment in Central India with high-cost runtime gates reviewed before apply. |
+| Prod primary | RG, VNet/subnets, hub peering, private DNS links, PostgreSQL Flexible Server, Key Vault, Service Bus, Monitor, Application Insights, AKS, App Gateway WAF, WAF policy, App Gateway diagnostics, Front Door, Azure DNS records, AI Services, and edge alerts are live; managed identities and policy assignments remain planned | Production deployment in Central India with high-cost runtime gates reviewed before apply. |
 | Prod DR | DR RG, DR VNet/subnets, hub peering, private DNS links, Key Vault, monitoring are live; optional gated PostgreSQL, Service Bus, warm standby AKS, App Gateway WAF, AI Foundry, managed identities, and policy assignments remain planned | Demo target is DR Level 2 in South India, upgradeable without redesign. |
 
 ## Saved Architecture Plans
@@ -90,6 +90,7 @@ Production and prod-dr foundation resources are now created and verified with no
 - Use AKS autoscaling from day one.
 - Use `Standard_D2s_v4` for AKS node pools after Azure CLI SKU/quota checks showed B-series quota was unavailable in this subscription.
 - Required ingress path is `Internet -> Azure Front Door -> Application Gateway WAF -> AKS`.
+- Production Front Door routes use HTTP from Front Door to App Gateway for the first demo because App Gateway currently terminates only HTTP from AGIC-managed listeners; public TLS terminates at Front Door. End-to-end TLS to App Gateway is the next hardening step.
 - Use Service Bus Premium capacity `1` and premium messaging partitions `1` for prod when Premium SKU is selected.
 - Production runtime wave 1 is live: `aks-kairoai-prod-ci`, `agw-kairoai-prod-ci`, WAF policy, App Gateway public IP `20.219.35.127`, diagnostics, and edge alerts.
 - Hub Key Vault is limited to shared control-plane certificates and automation references. Test and prod Key Vaults hold environment-specific runtime secrets to preserve isolation and limit blast radius.
