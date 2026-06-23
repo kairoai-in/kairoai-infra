@@ -1,0 +1,30 @@
+{
+  "properties": {
+    "displayName": "KairoAI platform baseline",
+    "description": "Baseline governance initiative for KairoAI hub-spoke infrastructure.",
+    "metadata": {
+      "category": "KairoAI"
+    },
+    "parameters": {
+      "tagEffect": {
+        "type": "String",
+        "defaultValue": "Audit",
+        "allowedValues": [
+          "Audit",
+          "Deny",
+          "Disabled"
+        ]
+      },
+      "publicNetworkEffect": {
+        "type": "String",
+        "defaultValue": "Audit",
+        "allowedValues": [
+          "Audit",
+          "Deny",
+          "Disabled"
+        ]
+      }
+    },
+    "policyDefinitions": []
+  }
+}

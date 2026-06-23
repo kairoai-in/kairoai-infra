@@ -33,6 +33,16 @@ output "public_dns_name_servers" {
   value       = azurerm_dns_zone.public.name_servers
 }
 
+output "front_door_endpoint_host_name" {
+  description = "Shared hub Front Door endpoint hostname."
+  value       = module.front_door.endpoint_host_name
+}
+
+output "front_door_custom_domain_validation_tokens" {
+  description = "Shared Front Door managed certificate validation tokens keyed by route name."
+  value       = module.front_door.custom_domain_validation_tokens
+}
+
 output "private_dns_zone_ids" {
   description = "Private DNS zone IDs."
   value       = { for name, zone in azurerm_private_dns_zone.hub : name => zone.id }

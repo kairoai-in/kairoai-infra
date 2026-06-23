@@ -63,10 +63,17 @@ Demo target is Level 2:
 
 ## Terraform Implementation Order
 
+The architecture should be planned as one system and applied in dependency-safe waves.
+
+Detailed rollout source of truth:
+
+- `full-architecture-rollout-plan.md`
+
+High-level waves:
+
 1. Bootstrap hub Terraform state.
-2. Hub foundation: resource group, VNet, DNS, private DNS, ACR, Firewall, Bastion, Front Door.
-3. Test spoke: VNet, peering, App Gateway WAF, AKS, PostgreSQL, Key Vault, Service Bus, AI Foundry, monitoring.
-4. Validate application deploy on test.
-5. Prod primary.
-6. Prod DR.
-7. Terraform pipelines after the first infrastructure path is stable.
+2. Hub foundation and shared services.
+3. Test full runtime and ingress.
+4. Prod primary runtime.
+5. Prod DR foundation.
+6. CI/CD, policy, and remediation automation.

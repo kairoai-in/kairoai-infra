@@ -1,0 +1,49 @@
+subscription_id     = "6b01db76-626a-44a2-8119-17682410914a"
+hub_subscription_id = "5b942f88-17e6-4026-ae23-d520365fb916"
+tenant_id           = "83474cb5-f1fa-4d06-906c-e5dad12ce3b9"
+location            = "centralindia"
+environment         = "test"
+vnet_cidr           = "10.20.0.0/16"
+
+hub_state_resource_group_name  = "rg-kairoai-tfstate-ci"
+hub_state_storage_account_name = "stkairoaitfstateci"
+hub_state_container_name       = "hubtfstate"
+hub_state_key                  = "kairoai/hub/terraform.tfstate"
+
+log_retention_days            = 30
+public_network_access_enabled = true
+
+postgres_version    = "16"
+postgres_sku_name   = "B_Standard_B1ms"
+postgres_storage_mb = 32768
+service_bus_sku     = "Standard"
+
+aks_private_cluster_enabled = true
+aks_system_node_vm_size     = "Standard_D2s_v4"
+aks_system_node_min_count   = 1
+aks_system_node_max_count   = 2
+aks_user_node_vm_size       = "Standard_D2s_v4"
+aks_user_node_min_count     = 1
+aks_user_node_max_count     = 3
+
+grafana_public_network_access_enabled = true
+alert_email                           = ""
+
+enable_app_gateway_waf = true
+enable_ai_foundry      = false
+
+app_gateway_min_capacity = 1
+app_gateway_max_capacity = 2
+ai_foundry_sku_name      = "S0"
+ai_foundry_deployments   = {}
+managed_identities       = {}
+policy_assignments       = {}
+
+key_vault_purge_protection_enabled   = true
+key_vault_soft_delete_retention_days = 30
+
+tags = {
+  application = "kairoai"
+  environment = "test"
+  managed_by  = "terraform"
+}

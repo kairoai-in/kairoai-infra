@@ -9,6 +9,7 @@ locals {
     bastion                    = "bas-kairoai-hub-ci"
     acr                        = "acrkairoaihubci"
     front_door                 = "afd-kairoai-global"
+    front_door_endpoint        = "fde-kairoai-global"
     public_dns_zone            = "kairoai.in"
     terraform_state_rg         = "rg-kairoai-tfstate-ci"
     terraform_state_storage    = "stkairoaitfstateci"
@@ -56,6 +57,32 @@ locals {
 }
 
 data "azurerm_client_config" "current" {}
+
+data "terraform_remote_state" "test" {
+  backend = "azurerm"
+
+  config = {
+    resource_group_name  = var.test_state_resource_group_name
+    storage_account_name = var.test_state_storage_account_name
+    container_name       = var.test_state_container_name
+    key                  = var.test_state_key
+    subscription_id      = var.subscription_id
+    tenant_id            = var.tenant_id
+  }
+}
+
+data "terraform_remote_state" "prod" {
+  backend = "azurerm"
+
+  config = {
+    resource_group_name  = var.prod_state_resource_group_name
+    storage_account_name = var.prod_state_storage_account_name
+    container_name       = var.prod_state_container_name
+    key                  = var.prod_state_key
+    subscription_id      = var.subscription_id
+    tenant_id            = var.tenant_id
+  }
+}
 
 resource "azurerm_resource_group" "hub" {
   name     = local.names.resource_group
@@ -125,13 +152,29 @@ resource "azurerm_log_analytics_workspace" "hub" {
   tags                = local.tags
 }
 
+resource "azurerm_monitor_action_group" "hub" {
+  name                = "ag-kairoai-hub-platform"
+  resource_group_name = azurerm_resource_group.hub.name
+  short_name          = "kairohub"
+  tags                = local.tags
+
+  dynamic "email_receiver" {
+    for_each = var.alert_email == "" ? [] : [var.alert_email]
+
+    content {
+      name          = "platform-email"
+      email_address = email_receiver.value
+    }
+  }
+}
+
 resource "azurerm_key_vault" "hub" {
   name                          = "kv-kairoai-hub-ci"
   resource_group_name           = azurerm_resource_group.hub.name
   location                      = azurerm_resource_group.hub.location
   tenant_id                     = var.tenant_id
   sku_name                      = "standard"
-  enable_rbac_authorization     = true
+  rbac_authorization_enabled    = true
   purge_protection_enabled      = var.key_vault_purge_protection_enabled
   soft_delete_retention_days    = var.key_vault_soft_delete_retention_days
   public_network_access_enabled = var.public_network_access_enabled
@@ -142,4 +185,83 @@ resource "azurerm_role_assignment" "hub_key_vault_admin" {
   scope                = azurerm_key_vault.hub.id
   role_definition_name = "Key Vault Administrator"
   principal_id         = data.azurerm_client_config.current.object_id
+}
+
+module "front_door" {
+  source = "../../modules/front-door"
+
+  profile_name        = local.names.front_door
+  endpoint_name       = local.names.front_door_endpoint
+  resource_group_name = azurerm_resource_group.hub.name
+  sku_name            = var.front_door_sku_name
+  dns_zone_id         = azurerm_dns_zone.public.id
+  routes = {
+    prod-dashboard = {
+      host_name          = "kairoai.in"
+      origin_host_name   = data.terraform_remote_state.prod.outputs.app_gateway_public_ip_address
+      origin_host_header = "kairoai.in"
+    }
+    prod-api = {
+      host_name          = "api.kairoai.in"
+      origin_host_name   = data.terraform_remote_state.prod.outputs.app_gateway_public_ip_address
+      origin_host_header = "api.kairoai.in"
+    }
+    test-dashboard = {
+      host_name          = "test.kairoai.in"
+      origin_host_name   = data.terraform_remote_state.test.outputs.app_gateway_public_ip_address
+      origin_host_header = "test.kairoai.in"
+    }
+    test-api = {
+      host_name          = "test-api.kairoai.in"
+      origin_host_name   = data.terraform_remote_state.test.outputs.app_gateway_public_ip_address
+      origin_host_header = "test-api.kairoai.in"
+    }
+  }
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.hub.id
+  action_group_id            = azurerm_monitor_action_group.hub.id
+  metric_alerts_enabled      = true
+  tags                       = local.tags
+}
+
+resource "azurerm_dns_a_record" "front_door_apex" {
+  name                = "@"
+  zone_name           = azurerm_dns_zone.public.name
+  resource_group_name = azurerm_resource_group.hub.name
+  ttl                 = 300
+  target_resource_id  = module.front_door.endpoint_id
+  tags                = local.tags
+}
+
+resource "azurerm_dns_cname_record" "front_door_subdomains" {
+  for_each = {
+    api      = "api"
+    test     = "test"
+    test-api = "test-api"
+  }
+
+  name                = each.value
+  zone_name           = azurerm_dns_zone.public.name
+  resource_group_name = azurerm_resource_group.hub.name
+  ttl                 = 300
+  record              = module.front_door.endpoint_host_name
+  tags                = local.tags
+}
+
+resource "azurerm_dns_txt_record" "front_door_domain_validation" {
+  for_each = {
+    "_dnsauth"          = module.front_door.custom_domain_validation_tokens["prod-dashboard"]
+    "_dnsauth.api"      = module.front_door.custom_domain_validation_tokens["prod-api"]
+    "_dnsauth.test"     = module.front_door.custom_domain_validation_tokens["test-dashboard"]
+    "_dnsauth.test-api" = module.front_door.custom_domain_validation_tokens["test-api"]
+  }
+
+  name                = each.key
+  zone_name           = azurerm_dns_zone.public.name
+  resource_group_name = azurerm_resource_group.hub.name
+  ttl                 = 300
+  tags                = local.tags
+
+  record {
+    value = each.value
+  }
 }

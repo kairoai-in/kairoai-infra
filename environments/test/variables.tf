@@ -111,3 +111,134 @@ variable "service_bus_sku" {
   type        = string
   default     = "Standard"
 }
+
+variable "aks_kubernetes_version" {
+  description = "AKS Kubernetes version. Null lets Azure choose the default stable version."
+  type        = string
+  default     = null
+}
+
+variable "aks_system_node_min_count" {
+  description = "Minimum node count for the autoscaled AKS system node pool."
+  type        = number
+  default     = 1
+}
+
+variable "aks_system_node_max_count" {
+  description = "Maximum node count for the autoscaled AKS system node pool."
+  type        = number
+  default     = 2
+}
+
+variable "aks_system_node_vm_size" {
+  description = "VM size for the AKS system node pool."
+  type        = string
+  default     = "Standard_D2s_v4"
+}
+
+variable "aks_user_node_min_count" {
+  description = "Minimum node count for the autoscaled AKS user node pool."
+  type        = number
+  default     = 1
+}
+
+variable "aks_user_node_max_count" {
+  description = "Maximum node count for the autoscaled AKS user node pool."
+  type        = number
+  default     = 3
+}
+
+variable "aks_user_node_vm_size" {
+  description = "VM size for the AKS user node pool."
+  type        = string
+  default     = "Standard_D2s_v4"
+}
+
+variable "aks_private_cluster_enabled" {
+  description = "Enable a private AKS API endpoint."
+  type        = bool
+  default     = true
+}
+
+variable "grafana_public_network_access_enabled" {
+  description = "Allow public access to Azure Managed Grafana during the test bootstrap phase."
+  type        = bool
+  default     = true
+}
+
+variable "alert_email" {
+  description = "Optional email receiver for Azure Monitor alerts. Leave empty to create the action group without email receivers."
+  type        = string
+  default     = ""
+}
+
+variable "enable_app_gateway_waf" {
+  description = "Create Application Gateway WAF for the test spoke."
+  type        = bool
+  default     = true
+}
+
+variable "enable_ai_foundry" {
+  description = "Create Azure AI Services / AI Foundry account and model deployments."
+  type        = bool
+  default     = false
+}
+
+variable "app_gateway_min_capacity" {
+  description = "Minimum Application Gateway autoscale capacity."
+  type        = number
+  default     = 1
+}
+
+variable "app_gateway_max_capacity" {
+  description = "Maximum Application Gateway autoscale capacity."
+  type        = number
+  default     = 2
+}
+
+variable "ai_foundry_sku_name" {
+  description = "Azure AI Services SKU."
+  type        = string
+  default     = "S0"
+}
+
+variable "ai_foundry_deployments" {
+  description = "Azure AI model deployments keyed by deployment name."
+  type = map(object({
+    model_format  = optional(string, "OpenAI")
+    model_name    = string
+    model_version = string
+    sku_name      = optional(string, "Standard")
+    capacity      = optional(number, 1)
+  }))
+  default = {}
+}
+
+variable "managed_identities" {
+  description = "User-assigned managed identities to create, keyed by short name."
+  type = map(object({
+    federated_credentials = optional(map(object({
+      issuer    = string
+      subject   = string
+      audiences = optional(list(string), ["api://AzureADTokenExchange"])
+    })), {})
+    role_assignments = optional(map(object({
+      scope                = string
+      role_definition_name = string
+    })), {})
+  }))
+  default = {}
+}
+
+variable "policy_assignments" {
+  description = "Azure Policy assignments for the test resource group."
+  type = map(object({
+    policy_definition_id = string
+    display_name         = string
+    description          = optional(string, null)
+    parameters           = optional(string, null)
+    location             = optional(string, null)
+    identity_type        = optional(string, null)
+  }))
+  default = {}
+}
