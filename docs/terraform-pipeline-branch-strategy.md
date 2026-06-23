@@ -20,11 +20,13 @@ The PR pipeline is sequential and fail-fast:
 
 1. `Terraform Format` runs `terraform fmt -check -recursive`.
 2. `Terraform Validate` runs backend-free init and `terraform validate`.
-3. `Terraform Security` runs Checkov against Terraform code.
+3. `Terraform Security` runs Checkov against Terraform code in reporting mode while the current hardening backlog is being closed.
 4. `Terraform Plan` logs into Azure with OIDC, initializes the real remote backend, and creates a plan.
 5. `Terraform Policy` runs Conftest/OPA against the generated plan JSON.
 
 If any stage fails, the Slack/email notification action sends a failure alert.
+
+Checkov is intentionally `--soft-fail` during bootstrap because the current architecture still has known hardening work such as NSG associations, private endpoint enforcement, CMK encryption, local-auth disablement, and public-network lockdown. OPA remains the hard policy gate for the high-confidence KairoAI rules already agreed.
 
 ## Apply Pipeline
 

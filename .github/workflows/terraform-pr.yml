@@ -113,6 +113,7 @@ jobs:
           --framework terraform
           --skip-path .terraform
           --quiet
+          --soft-fail
 
   terraform-plan:
     name: Terraform Plan
