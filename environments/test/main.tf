@@ -1,4 +1,4 @@
-# Smoke PRs may touch this file to exercise the protected test pipeline.
+# Smoke PRs may touch this file to exercise the protected test pipeline and apply gate.
 locals {
   region_code = "ci"
   names       = module.naming.names
