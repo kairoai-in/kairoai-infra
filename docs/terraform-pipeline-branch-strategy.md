@@ -84,12 +84,11 @@ Security note: `User Access Administrator` is powerful because it lets the workf
 
 Terraform code ownership is enforced through `.github/CODEOWNERS`. Branch protection requires one code owner review before merge. A pull request author generally cannot approve their own PR for required-review enforcement, so another reviewer should approve the change.
 
-Current bootstrap CODEOWNERS uses individual reviewers because GitHub team creation requires `admin:org` scope:
+CODEOWNERS now uses the reviewer team:
 
-- `@Elzabeth-L`
-- `@ElzabethOps`
+- `@kairoai-in/reviewer`
 
-After refreshing GitHub CLI auth with `admin:org`, replace the CODEOWNERS line with `* @kairoai-in/reviewer`.
+`ElzabethOps` must accept the pending `kairoai-in` organization invitation before GitHub lists that account as an active reviewer team member.
 
 ## GitHub Setup Status
 
@@ -102,10 +101,10 @@ Created/expected remote branches:
 Required GitHub setup before this is fully enforced:
 
 - Refresh GitHub CLI auth with `admin:org` before creating org teams: `gh auth refresh -h github.com -s admin:org`.
-- Create `reviewer` and `dev` teams after the token has `admin:org`.
-- Add `Elzabeth-L` and `ElzabethOps` to `reviewer`.
-- Add the same users to `dev`.
-- Enable branch protection/rulesets for `hub`, `test`, and `main`.
+- `reviewer` and `dev` teams exist.
+- `Elzabeth-L` is active in both teams.
+- `ElzabethOps` has a pending organization invitation and should join both teams after accepting it.
+- Branch protection/rulesets are enabled for `hub`, `test`, and `main`.
 
 Current GitHub limitation observed during setup:
 
