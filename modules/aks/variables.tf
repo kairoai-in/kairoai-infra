@@ -71,6 +71,12 @@ variable "application_gateway_id" {
   default     = null
 }
 
+variable "application_gateway_subnet_id" {
+  description = "Subnet ID hosting the Application Gateway. Required when AGIC manages an existing gateway so the identity can join the subnet."
+  type        = string
+  default     = null
+}
+
 variable "cluster_admin_principal_ids" {
   description = "Entra group or service principal object IDs granted the AKS RBAC Cluster Admin role."
   type        = set(string)

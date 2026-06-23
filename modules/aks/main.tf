@@ -122,6 +122,14 @@ resource "azurerm_role_assignment" "agic_app_gateway_contributor" {
   principal_id         = azurerm_kubernetes_cluster.this.ingress_application_gateway[0].ingress_application_gateway_identity[0].object_id
 }
 
+resource "azurerm_role_assignment" "agic_app_gateway_subnet_network_contributor" {
+  count = var.application_gateway_id == null || var.application_gateway_subnet_id == null ? 0 : 1
+
+  scope                = var.application_gateway_subnet_id
+  role_definition_name = "Network Contributor"
+  principal_id         = azurerm_kubernetes_cluster.this.ingress_application_gateway[0].ingress_application_gateway_identity[0].object_id
+}
+
 resource "azurerm_role_assignment" "cluster_admin" {
   for_each = var.cluster_admin_principal_ids
 
