@@ -34,13 +34,28 @@ aks_cluster_admin_principal_ids = ["351af7b8-31dd-4186-a7bc-c2f38a79d242"]
 enable_aks             = true
 enable_app_gateway_waf = true
 enable_front_door      = false
-enable_ai_foundry      = false
+enable_ai_foundry      = true
 
 app_gateway_min_capacity = 1
 app_gateway_max_capacity = 3
 front_door_sku_name      = "Premium_AzureFrontDoor"
 ai_foundry_sku_name      = "S0"
-ai_foundry_deployments   = {}
+ai_foundry_name          = "oai-kairoai-prod-si"
+ai_foundry_location      = "southindia"
+ai_foundry_deployments = {
+  "gpt-5.4" = {
+    model_name    = "gpt-5.4"
+    model_version = "2026-03-05"
+    sku_name      = "GlobalStandard"
+    capacity      = 10
+  }
+  "gpt-5.4-mini" = {
+    model_name    = "gpt-5.4-mini"
+    model_version = "2026-03-17"
+    sku_name      = "GlobalStandard"
+    capacity      = 10
+  }
+}
 managed_identities       = {}
 policy_assignments       = {}
 

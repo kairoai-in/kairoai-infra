@@ -205,7 +205,19 @@ variable "enable_front_door" {
 variable "enable_ai_foundry" {
   description = "Create Azure AI Services / AI Foundry account and model deployments."
   type        = bool
-  default     = false
+  default     = true
+}
+
+variable "ai_foundry_name" {
+  description = "Globally unique Azure AI Services account name."
+  type        = string
+  default     = "oai-kairoai-prod-si"
+}
+
+variable "ai_foundry_location" {
+  description = "Azure AI Services region. South India supports GlobalStandard GPT-5 deployments for this subscription."
+  type        = string
+  default     = "southindia"
 }
 
 variable "app_gateway_min_capacity" {
@@ -241,7 +253,20 @@ variable "ai_foundry_deployments" {
     sku_name      = optional(string, "Standard")
     capacity      = optional(number, 1)
   }))
-  default = {}
+  default = {
+    "gpt-5.4" = {
+      model_name    = "gpt-5.4"
+      model_version = "2026-03-05"
+      sku_name      = "GlobalStandard"
+      capacity      = 10
+    }
+    "gpt-5.4-mini" = {
+      model_name    = "gpt-5.4-mini"
+      model_version = "2026-03-17"
+      sku_name      = "GlobalStandard"
+      capacity      = 10
+    }
+  }
 }
 
 variable "managed_identities" {

@@ -98,4 +98,4 @@ Production and prod-dr foundation resources are now created and verified with no
 - Service Bus retains `review-jobs` during migration and adds the application-contract queue `review-analysis`; workers use `review-analysis` and no live queue is deleted.
 - Production runtime credentials use a queue-scoped `review-runtime` SAS rule with Send+Listen only; its connection string is stored in prod Key Vault as `service-bus-connection-string`.
 - PostgreSQL modules generate the SQLAlchemy `postgresql+psycopg` URL internally and store it in each environment Key Vault as `database-url`; credentials are never committed to Helm values.
-- Central India exposes GPT-5.5 only through `GlobalProvisionedManaged` with minimum capacity 15 for this subscription. AI deployment remains gated pending an explicit cost decision or permission to use a pay-as-you-go model region.
+- Production AI Services runs in South India because it supports pay-as-you-go `GlobalStandard`. GPT-5.5 quota is zero for this subscription, so GPT-5.4 is the primary model with GPT-5.4-mini fallback at capacity 10 each.

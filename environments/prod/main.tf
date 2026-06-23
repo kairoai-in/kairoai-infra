@@ -176,7 +176,7 @@ module "service_bus" {
       send       = true
     }
   }
-  tags                         = local.tags
+  tags = local.tags
 }
 
 resource "azurerm_key_vault_secret" "service_bus_connection_string" {
@@ -268,14 +268,46 @@ module "ai_foundry" {
   source = "../../modules/ai-foundry"
   count  = var.enable_ai_foundry ? 1 : 0
 
-  name                          = local.names.ai_foundry
+  name                          = var.ai_foundry_name
   resource_group_name           = module.resource_group.name
-  location                      = module.resource_group.location
+  location                      = var.ai_foundry_location
   sku_name                      = var.ai_foundry_sku_name
-  custom_subdomain_name         = local.names.ai_foundry
+  custom_subdomain_name         = var.ai_foundry_name
   public_network_access_enabled = var.public_network_access_enabled
   deployments                   = var.ai_foundry_deployments
-  tags                          = local.tags
+  tags                          = merge(local.tags, { region = var.ai_foundry_location })
+}
+
+resource "azurerm_key_vault_secret" "ai_foundry_endpoint" {
+  count = var.enable_ai_foundry ? 1 : 0
+
+  name         = "azure-ai-foundry-endpoint"
+  value        = module.ai_foundry[0].endpoint
+  key_vault_id = module.key_vault.id
+}
+
+resource "azurerm_key_vault_secret" "ai_foundry_api_key" {
+  count = var.enable_ai_foundry ? 1 : 0
+
+  name         = "azure-ai-foundry-api-key"
+  value        = module.ai_foundry[0].primary_access_key
+  key_vault_id = module.key_vault.id
+}
+
+resource "azurerm_key_vault_secret" "ai_foundry_deployment" {
+  count = var.enable_ai_foundry ? 1 : 0
+
+  name         = "azure-ai-foundry-deployment"
+  value        = "gpt-5.4"
+  key_vault_id = module.key_vault.id
+}
+
+resource "azurerm_key_vault_secret" "ai_foundry_api_version" {
+  count = var.enable_ai_foundry ? 1 : 0
+
+  name         = "azure-ai-foundry-api-version"
+  value        = "2025-04-01-preview"
+  key_vault_id = module.key_vault.id
 }
 
 module "managed_identity" {
