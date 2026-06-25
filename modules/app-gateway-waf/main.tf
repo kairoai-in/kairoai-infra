@@ -41,6 +41,37 @@ resource "azurerm_web_application_firewall_policy" "this" {
     max_request_body_size_in_kb = 128
   }
 
+  dynamic "custom_rules" {
+    for_each = var.waf_custom_rules
+
+    content {
+      name      = custom_rules.value.name
+      priority  = custom_rules.value.priority
+      rule_type = custom_rules.value.rule_type
+      action    = custom_rules.value.action
+
+      dynamic "match_conditions" {
+        for_each = custom_rules.value.match_conditions
+
+        content {
+          operator           = match_conditions.value.operator
+          negation_condition = match_conditions.value.negation_condition
+          match_values       = match_conditions.value.match_values
+          transforms         = match_conditions.value.transforms
+
+          dynamic "match_variables" {
+            for_each = match_conditions.value.match_variables
+
+            content {
+              variable_name = match_variables.value.variable_name
+              selector      = match_variables.value.selector
+            }
+          }
+        }
+      }
+    }
+  }
+
   managed_rules {
     dynamic "exclusion" {
       for_each = var.waf_exclusions
