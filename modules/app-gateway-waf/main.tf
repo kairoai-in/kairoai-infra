@@ -42,6 +42,34 @@ resource "azurerm_web_application_firewall_policy" "this" {
   }
 
   managed_rules {
+    dynamic "exclusion" {
+      for_each = var.waf_exclusions
+
+      content {
+        match_variable          = exclusion.value.match_variable
+        selector                = exclusion.value.selector
+        selector_match_operator = exclusion.value.selector_match_operator
+
+        dynamic "excluded_rule_set" {
+          for_each = exclusion.value.excluded_rule_sets
+
+          content {
+            type    = excluded_rule_set.value.type
+            version = excluded_rule_set.value.version
+
+            dynamic "rule_group" {
+              for_each = excluded_rule_set.value.rule_groups
+
+              content {
+                rule_group_name = rule_group.value.rule_group_name
+                excluded_rules  = rule_group.value.excluded_rules
+              }
+            }
+          }
+        }
+      }
+    }
+
     managed_rule_set {
       type    = "OWASP"
       version = "3.2"
