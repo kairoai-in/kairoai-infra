@@ -153,6 +153,24 @@ module "key_vault" {
   tags                          = local.tags
 }
 
+module "key_vault_private_endpoint" {
+  source = "../../modules/private-endpoint"
+
+  name                           = "pe-${local.names.key_vault}"
+  resource_group_name            = module.resource_group.name
+  location                       = module.resource_group.location
+  subnet_id                      = module.networking.subnet_ids["snet-private-endpoints"]
+  private_connection_resource_id = module.key_vault.id
+  subresource_names              = ["vault"]
+  private_dns_zone_ids           = [data.terraform_remote_state.hub.outputs.private_dns_zone_ids["privatelink.vaultcore.azure.net"]]
+  tags                           = local.tags
+
+  depends_on = [
+    module.private_dns_links,
+    module.key_vault,
+  ]
+}
+
 module "service_bus" {
   source = "../../modules/service-bus"
 
