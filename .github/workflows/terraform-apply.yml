@@ -25,6 +25,7 @@ jobs:
       should_apply: ${{ steps.gate.outputs.should_apply }}
       env_name: ${{ steps.map.outputs.env_name }}
       tf_dir: ${{ steps.map.outputs.tf_dir }}
+      secondary_tf_dir: ${{ steps.map.outputs.secondary_tf_dir }}
       subscription_id: ${{ steps.map.outputs.subscription_id }}
       apply_label: ${{ steps.map.outputs.apply_label }}
       author: ${{ steps.author.outputs.author }}
@@ -41,18 +42,21 @@ jobs:
               echo "tf_dir=environments/hub" >> "$GITHUB_OUTPUT"
               echo "subscription_id=5b942f88-17e6-4026-ae23-d520365fb916" >> "$GITHUB_OUTPUT"
               echo "apply_label=apply-hub" >> "$GITHUB_OUTPUT"
+              echo "secondary_tf_dir=" >> "$GITHUB_OUTPUT"
               ;;
             test)
               echo "env_name=test" >> "$GITHUB_OUTPUT"
               echo "tf_dir=environments/test" >> "$GITHUB_OUTPUT"
               echo "subscription_id=6b01db76-626a-44a2-8119-17682410914a" >> "$GITHUB_OUTPUT"
               echo "apply_label=apply-test" >> "$GITHUB_OUTPUT"
+              echo "secondary_tf_dir=" >> "$GITHUB_OUTPUT"
               ;;
             main)
               echo "env_name=prod" >> "$GITHUB_OUTPUT"
               echo "tf_dir=environments/prod" >> "$GITHUB_OUTPUT"
               echo "subscription_id=a8270be7-dabc-4d92-98db-26a55025b0df" >> "$GITHUB_OUTPUT"
               echo "apply_label=apply-prod" >> "$GITHUB_OUTPUT"
+              echo "secondary_tf_dir=environments/prod-dr" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "Unsupported Terraform target branch: ${{ github.base_ref }}" >&2
@@ -125,6 +129,15 @@ jobs:
         run: terraform -chdir=${{ needs.gate.outputs.tf_dir }} plan -input=false -out=apply.tfplan
       - name: Terraform apply
         run: terraform -chdir=${{ needs.gate.outputs.tf_dir }} apply -input=false -auto-approve apply.tfplan
+      - name: Terraform init for production DR
+        if: ${{ needs.gate.outputs.secondary_tf_dir != '' }}
+        run: terraform -chdir=${{ needs.gate.outputs.secondary_tf_dir }} init -input=false
+      - name: Terraform plan for production DR apply
+        if: ${{ needs.gate.outputs.secondary_tf_dir != '' }}
+        run: terraform -chdir=${{ needs.gate.outputs.secondary_tf_dir }} plan -input=false -out=apply.tfplan
+      - name: Terraform apply production DR
+        if: ${{ needs.gate.outputs.secondary_tf_dir != '' }}
+        run: terraform -chdir=${{ needs.gate.outputs.secondary_tf_dir }} apply -input=false -auto-approve apply.tfplan
 
   notify-gate-skipped:
     name: Notify Terraform Apply Gate Skipped
