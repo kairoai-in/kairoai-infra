@@ -65,6 +65,101 @@ variable "waf_policy_name" {
   default     = null
 }
 
+variable "waf_exclusions" {
+  description = "Managed rule exclusions for known safe application values that can trigger CRS false positives."
+  type = list(object({
+    match_variable          = string
+    selector                = string
+    selector_match_operator = string
+    excluded_rule_sets = list(object({
+      type    = string
+      version = string
+      rule_groups = list(object({
+        rule_group_name = string
+        excluded_rules  = list(string)
+      }))
+    }))
+  }))
+  default = [
+    {
+      match_variable          = "RequestCookieNames"
+      selector                = "kairoai_installation"
+      selector_match_operator = "Equals"
+      excluded_rule_sets = [
+        {
+          type    = "OWASP"
+          version = "3.2"
+          rule_groups = [
+            {
+              rule_group_name = "REQUEST-942-APPLICATION-ATTACK-SQLI"
+              excluded_rules = [
+                "942200",
+                "942260",
+                "942340",
+                "942370",
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+variable "waf_custom_rules" {
+  description = "Custom WAF rules for tightly scoped application traffic exceptions."
+  type = list(object({
+    name      = string
+    priority  = number
+    rule_type = string
+    action    = string
+    match_conditions = list(object({
+      operator           = string
+      negation_condition = bool
+      match_values       = list(string)
+      transforms         = list(string)
+      match_variables = list(object({
+        variable_name = string
+        selector      = optional(string)
+      }))
+    }))
+  }))
+  default = [
+    {
+      name      = "AllowSignedGitHubWebhooks"
+      priority  = 50
+      rule_type = "MatchRule"
+      action    = "Allow"
+      match_conditions = [
+        {
+          operator           = "Contains"
+          negation_condition = false
+          match_values       = ["/api/github/events"]
+          transforms         = []
+          match_variables = [
+            {
+              variable_name = "RequestUri"
+              selector      = null
+            }
+          ]
+        },
+        {
+          operator           = "Contains"
+          negation_condition = false
+          match_values       = ["sha256="]
+          transforms         = []
+          match_variables = [
+            {
+              variable_name = "RequestHeaders"
+              selector      = null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
 variable "log_analytics_workspace_id" {
   description = "Optional Log Analytics workspace ID for Application Gateway diagnostics."
   type        = string
