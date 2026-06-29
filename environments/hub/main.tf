@@ -187,6 +187,23 @@ resource "azurerm_role_assignment" "hub_key_vault_admin" {
   principal_id         = data.azurerm_client_config.current.object_id
 }
 
+module "hub_key_vault_private_endpoint" {
+  source = "../../modules/private-endpoint"
+
+  name                           = "pe-${azurerm_key_vault.hub.name}"
+  resource_group_name            = azurerm_resource_group.hub.name
+  location                       = azurerm_resource_group.hub.location
+  subnet_id                      = azurerm_subnet.hub["snet-private-endpoints"].id
+  private_connection_resource_id = azurerm_key_vault.hub.id
+  subresource_names              = ["vault"]
+  private_dns_zone_ids           = [azurerm_private_dns_zone.hub["privatelink.vaultcore.azure.net"].id]
+  tags                           = local.tags
+
+  depends_on = [
+    azurerm_private_dns_zone_virtual_network_link.hub,
+  ]
+}
+
 module "front_door" {
   source = "../../modules/front-door"
 
