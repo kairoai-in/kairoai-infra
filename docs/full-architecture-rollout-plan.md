@@ -4,11 +4,17 @@ Last updated: `2026-06-23 17:47:56 +05:30`
 
 This document treats KairoAI infrastructure as one complete architecture, not as isolated resources. Terraform still applies in dependency-safe waves because Azure resources depend on each other across subscriptions, but each wave belongs to the same target design.
 
+For the detailed browser-to-AKS request path, see `public-dns-and-ingress-flow.md`.
+
 ## Target Architecture
 
 ```text
-Internet
-  -> Azure Front Door Premium
+User browser
+  -> kairoai.in / api.kairoai.in / test.kairoai.in / test-api.kairoai.in
+  -> GoDaddy registrar delegation
+  -> Azure DNS zone kairoai.in in hub subscription
+  -> Azure Front Door Premium profile afd-kairoai-global
+  -> Azure Front Door endpoint fde-kairoai-global-abbxdsduhdbbe5dy.z02.azurefd.net
   -> Application Gateway WAF v2
   -> AKS ingress / services
   -> KairoAI microservices
@@ -35,9 +41,26 @@ Use this section as the source for an architecture diagram. The recommended visu
 
 ```text
 Users / GitHub
-  -> Azure DNS zone kairoai.in
-  -> Azure Front Door Premium
-  -> Application Gateway WAF v2
+  -> GoDaddy domain registration for kairoai.in
+  -> Custom nameserver delegation to Azure DNS:
+       ns1-05.azure-dns.com.
+       ns2-05.azure-dns.net.
+       ns3-05.azure-dns.org.
+       ns4-05.azure-dns.info.
+  -> Azure DNS public zone kairoai.in in hub subscription
+       @        A/ALIAS -> Azure Front Door endpoint resource
+       api      CNAME   -> fde-kairoai-global-abbxdsduhdbbe5dy.z02.azurefd.net
+       test     CNAME   -> fde-kairoai-global-abbxdsduhdbbe5dy.z02.azurefd.net
+       test-api CNAME   -> fde-kairoai-global-abbxdsduhdbbe5dy.z02.azurefd.net
+       _dnsauth TXT     -> Front Door managed certificate validation
+  -> Azure Front Door Premium profile afd-kairoai-global
+  -> Azure Front Door endpoint fde-kairoai-global-abbxdsduhdbbe5dy.z02.azurefd.net
+  -> Hostname-based route:
+       kairoai.in       -> prod dashboard origin
+       api.kairoai.in   -> prod API origin
+       test.kairoai.in  -> test dashboard origin
+       test-api.kairoai.in -> test API origin
+  -> Application Gateway WAF v2 in the selected spoke
   -> AKS ingress / AGIC
   -> KairoAI services
   -> Azure PostgreSQL Flexible Server
@@ -55,17 +78,17 @@ Users / GitHub
 | State | Blob containers | `hubtfstate`, `testtfstate`, `prodtfstate` | Live | One container per environment family. |
 | Shared RG | Resource group | `rg-kairoai-hub-ci` | Live | Hub shared services RG. |
 | Network | VNet | `vnet-kairoai-hub-ci` `10.10.0.0/16` | Live | Center of hub-spoke diagram. |
-| DNS | Public DNS zone | `kairoai.in` | Live | GoDaddy delegates records/nameservers as needed. |
+| DNS | Public DNS zone | `kairoai.in` | Live | Authoritative DNS zone after GoDaddy delegates to Azure DNS nameservers `ns1-05.azure-dns.com`, `ns2-05.azure-dns.net`, `ns3-05.azure-dns.org`, and `ns4-05.azure-dns.info`. |
 | DNS | Private DNS zones | `private.postgres.database.azure.com`, `privatelink.azurecr.io`, `privatelink.blob.core.windows.net`, `privatelink.monitor.azure.com`, `privatelink.ods.opinsights.azure.com`, `privatelink.postgres.database.azure.com`, `privatelink.servicebus.windows.net`, `privatelink.vaultcore.azure.net` | Live | Link each spoke VNet to these zones. |
 | Registry | Azure Container Registry | `acrkairoaihubci` | Live | Shared image registry for test/prod/prod-dr. |
 | Secrets | Key Vault | `kv-kairoai-hub-ci` | Live | Shared control-plane certificates and automation references only; never stores test/prod workload secrets. |
 | Observability | Log Analytics | `law-kairoai-hub-ci` | Live | Hub control-plane logs. |
-| Edge | Azure Front Door Premium | `afd-kairoai-global` / `fde-kairoai-global-abbxdsduhdbbe5dy.z02.azurefd.net` | Live | Shared global public entry before regional App Gateways. Routes `kairoai.in` and `api.kairoai.in` to prod; routes `test.kairoai.in` and `test-api.kairoai.in` to test. |
-| DNS | Front Door DNS records | `@`, `api`, `test`, `test-api`, `_dnsauth*` in `kairoai.in` | Live | Apex A alias and subdomain CNAMEs point to the shared Front Door endpoint; TXT records validate managed certificates. |
+| Edge | Azure Front Door Premium | `afd-kairoai-global` / `fde-kairoai-global-abbxdsduhdbbe5dy.z02.azurefd.net` | Live | `afd-kairoai-global` is the Front Door profile. `fde-kairoai-global-abbxdsduhdbbe5dy.z02.azurefd.net` is the Azure-generated endpoint hostname that custom DNS records target. |
+| DNS | Front Door DNS records | `@`, `api`, `test`, `test-api`, `_dnsauth*` in `kairoai.in` | Live | Apex `@` uses an Azure DNS alias A record to the Front Door endpoint resource. `api`, `test`, and `test-api` are CNAMEs to the Front Door endpoint hostname. `_dnsauth*` TXT records validate Front Door managed certificates. |
 | Observability | Front Door diagnostic setting | `diag-afd-kairoai-global` | Live | Sends Front Door access and health probe logs to hub Log Analytics. |
 | Observability | Front Door alerts | `alert-afd-kairoai-global-origin-health-low`, `alert-afd-kairoai-global-latency-high` | Live | Shared global edge health and latency alerts. |
-| Security | Azure Firewall | TBD | Deferred | Add if budget allows centralized egress/inspection. |
-| Operations | Azure Bastion | TBD | Deferred | Add if private operations require browser SSH/RDP. |
+| Security | Azure Firewall | `afw-kairoai-hub-ci` / `afwp-kairoai-hub-ci` | Deferred | Do not deploy now. Names/subnets are reserved in Terraform, but the Firewall module is still a placeholder and no Firewall resources are deployed. |
+| Operations | Azure Bastion | `bas-kairoai-hub-ci` | Deferred | Do not deploy now. `AzureBastionSubnet` is reserved, but no Bastion resource is deployed until private browser SSH/RDP is required. |
 
 ### Test Spoke - `kairoai-test-subscription`
 

@@ -21,13 +21,13 @@ This file is the practical inventory for where KairoAI Azure resources live, why
 | Terraform state storage | `stkairoaitfstateci` | Live | Stores `hubtfstate`, `testtfstate`, and `prodtfstate` containers. |
 | Hub RG | `rg-kairoai-hub-ci` | Live | Shared hub resources live here. |
 | Hub VNet | `vnet-kairoai-hub-ci` | Live | Central network that peers with spokes. |
-| Public DNS zone | `kairoai.in` | Live | Azure DNS zone for app/domain records; GoDaddy can delegate to Azure nameservers. |
+| Public DNS zone | `kairoai.in` | Live | Azure DNS zone for app/domain records. GoDaddy is the registrar, but DNS is delegated to Azure nameservers: `ns1-05.azure-dns.com`, `ns2-05.azure-dns.net`, `ns3-05.azure-dns.org`, `ns4-05.azure-dns.info`. |
 | Private DNS zones | Azure private DNS zones | Live | Shared private name resolution for PostgreSQL, ACR, Key Vault, Service Bus, Monitor, and Storage. |
 | ACR | `acrkairoaihubci` | Live | Shared container registry for service images across environments. |
 | Key Vault | `kv-kairoai-hub-ci` | Live | Shared hub secrets and future shared certificates. |
 | Log Analytics | `law-kairoai-hub-ci` | Live | Hub logging workspace. |
-| Front Door | `afd-kairoai-prod-ci` | Live for prod | Global entry point in the required path: Internet -> Front Door -> App Gateway WAF -> AKS. Managed custom domains remain pending until GoDaddy delegates `kairoai.in` to Azure DNS. |
-| Azure Firewall/Bastion | TBD by module plan | Planned/deferred | Centralized security/operations controls; deferred for cost and sequencing. |
+| Front Door | `afd-kairoai-global` / `fde-kairoai-global-abbxdsduhdbbe5dy.z02.azurefd.net` | Live for prod/test | Global entry point in the required path: Internet -> Azure DNS -> Front Door -> App Gateway WAF -> AKS. `afd-kairoai-global` is the Front Door profile; `fde-...azurefd.net` is the Azure-generated endpoint hostname used by DNS records. |
+| Azure Firewall/Bastion | `afw-kairoai-hub-ci`, `afwp-kairoai-hub-ci`, `bas-kairoai-hub-ci` | Planned/deferred | Do not deploy now. Names and subnets are reserved, but Terraform does not currently deploy Firewall/Bastion resources. Deferred for cost and because centralized egress/private browser access are not required for the current demo. |
 
 ## Test Subscription Resources
 
@@ -90,6 +90,7 @@ Production and prod-dr foundation resources are now created and verified with no
 - Use AKS autoscaling from day one.
 - Use `Standard_D2s_v4` for AKS node pools after Azure CLI SKU/quota checks showed B-series quota was unavailable in this subscription.
 - Required ingress path is `Internet -> Azure Front Door -> Application Gateway WAF -> AKS`.
+- Detailed public request flow is documented in `public-dns-and-ingress-flow.md`.
 - Production Front Door routes use HTTP from Front Door to App Gateway for the first demo because App Gateway currently terminates only HTTP from AGIC-managed listeners; public TLS terminates at Front Door. End-to-end TLS to App Gateway is the next hardening step.
 - Use Service Bus Premium capacity `1` and premium messaging partitions `1` for prod when Premium SKU is selected.
 - Production runtime wave 1 is live: `aks-kairoai-prod-ci`, `agw-kairoai-prod-ci`, WAF policy, App Gateway public IP `20.219.35.127`, diagnostics, and edge alerts.
@@ -100,3 +101,4 @@ Production and prod-dr foundation resources are now created and verified with no
 - Production runtime credentials use a queue-scoped `review-runtime` SAS rule with Send+Listen only; its connection string is stored in prod Key Vault as `service-bus-connection-string`.
 - PostgreSQL modules generate the SQLAlchemy `postgresql+psycopg` URL internally and store it in each environment Key Vault as `database-url`; credentials are never committed to Helm values.
 - Production AI Services runs in South India because it supports pay-as-you-go `GlobalStandard`. GPT-5.5 quota is zero for this subscription, so GPT-5.4 is the primary model with GPT-5.4-mini fallback at capacity 10 each.
+- Key Vault private endpoints are added first while public network access remains enabled for safe rollout. After AKS Key Vault CSI mounts and Terraform secret management are validated from a private execution path, public network access can be disabled per Key Vault.
