@@ -8,7 +8,7 @@ KairoAI keeps Terraform promotion separate from application CI/CD. Infrastructur
 | --- | --- | --- | --- |
 | `hub` | Shared hub | `environments/hub` | `apply-hub` |
 | `test` | Test spoke | `environments/test` | `apply-test` |
-| `main` | Production spoke | `environments/prod` | `apply-prod` |
+| `main` | Production spoke and DR | `environments/prod`, then `environments/prod-dr` | `apply-prod` |
 
 Short-lived infrastructure work should use `azure/*` branches and open a pull request into the correct target branch.
 
@@ -19,10 +19,10 @@ Workflow: `.github/workflows/terraform-pr.yml`
 The PR pipeline is sequential and fail-fast:
 
 1. `Terraform Format` runs `terraform fmt -check -recursive`.
-2. `Terraform Validate` runs backend-free init and `terraform validate`.
+2. `Terraform Validate` runs backend-free init and `terraform validate`; the `main` lane validates both production roots sequentially.
 3. `Terraform Security` runs Checkov against Terraform code in reporting mode while the current hardening backlog is being closed.
-4. `Terraform Plan` logs into Azure with OIDC, initializes the real remote backend, and creates a plan.
-5. `Terraform Policy` runs Conftest/OPA against the generated plan JSON.
+4. `Terraform Plan` logs into Azure with OIDC, initializes the real remote backend, and creates a plan. The `main` lane plans production first and prod-DR second using their separate state keys.
+5. `Terraform Policy` runs Conftest/OPA against every generated plan JSON.
 
 If any stage fails, the Slack/email notification action sends a failure alert.
 
@@ -39,7 +39,7 @@ Apply runs only after all of these are true:
 - At least one approval exists on the pull request.
 - Branch protection requires code owner review from `@kairoai-in/reviewer`.
 
-The apply job still creates a fresh plan before applying, so the applied plan is based on the final merged branch state.
+The apply job still creates a fresh plan before applying, so the applied plan is based on the final merged branch state. For `main`, production is applied first and prod-DR second; either failure stops the sequential run and sends the existing failure notification.
 
 ## Required GitHub Secrets
 
@@ -70,7 +70,7 @@ Current secret status:
 
 - `AZURE_TENANT_ID` is configured for `kairoai-infra`.
 - `SLACK_INCOMING_WEBHOOK` is configured for `kairoai-infra`.
-- `AZURE_CLIENT_ID` is pending until the GitHub OIDC Entra application is explicitly approved and created.
+- `AZURE_CLIENT_ID` and the GitHub OIDC Entra application are configured.
 
 Recommended OIDC identity:
 
@@ -95,7 +95,7 @@ CODEOWNERS now uses the reviewer team:
 
 - `@kairoai-in/reviewer`
 
-`ElzabethOps` must accept the pending `kairoai-in` organization invitation before GitHub lists that account as an active reviewer team member.
+`Elzabeth-L` and `ElzabethOps` are organization members and available through the reviewer team.
 
 ## GitHub Setup Status
 
@@ -110,7 +110,7 @@ Required GitHub setup before this is fully enforced:
 - Refresh GitHub CLI auth with `admin:org` before creating org teams: `gh auth refresh -h github.com -s admin:org`.
 - `reviewer` and `dev` teams exist.
 - `Elzabeth-L` is active in both teams.
-- `ElzabethOps` has a pending organization invitation and should join both teams after accepting it.
+- `ElzabethOps` accepted the organization invitation and joined the reviewer workflow.
 - Branch protection/rulesets are enabled for `hub`, `test`, and `main`.
 
 Current GitHub limitation observed during setup:
