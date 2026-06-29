@@ -12,6 +12,7 @@ module "argocd_extension" {
   ]
   redis_ha_enabled = var.argocd_redis_ha_enabled
   extra_configuration_settings = {
-    "server.ingress.enabled" = "false"
+    "server.ingress.enabled"           = "false"
+    "configs.params.server\\.insecure" = "true"
   }
 }
