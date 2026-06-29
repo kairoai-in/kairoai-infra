@@ -184,6 +184,30 @@ variable "enable_ai_foundry" {
   default     = false
 }
 
+variable "enable_argocd_extension" {
+  description = "Enable the Azure Argo CD preview extension in the test AKS cluster."
+  type        = bool
+  default     = true
+}
+
+variable "argocd_namespace" {
+  description = "Namespace where the Azure Argo CD extension is installed."
+  type        = string
+  default     = "argocd"
+}
+
+variable "argocd_hostname" {
+  description = "Public hostname for the test Argo CD UI."
+  type        = string
+  default     = "test-argocd.kairoai.in"
+}
+
+variable "argocd_redis_ha_enabled" {
+  description = "Enable Redis HA for Argo CD. Disabled in test to fit the small node pool."
+  type        = bool
+  default     = false
+}
+
 variable "app_gateway_min_capacity" {
   description = "Minimum Application Gateway autoscale capacity."
   type        = number
