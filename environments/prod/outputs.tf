@@ -54,6 +54,21 @@ output "application_insights_connection_string" {
   sensitive   = true
 }
 
+output "azure_monitor_workspace_id" {
+  description = "Prod Azure Monitor workspace ID for Managed Prometheus."
+  value       = azurerm_monitor_workspace.prod.id
+}
+
+output "managed_grafana_endpoint" {
+  description = "Prod Azure Managed Grafana endpoint."
+  value       = azurerm_dashboard_grafana.prod.endpoint
+}
+
+output "managed_grafana_id" {
+  description = "Prod Azure Managed Grafana resource ID."
+  value       = azurerm_dashboard_grafana.prod.id
+}
+
 output "aks_cluster_id" {
   description = "Prod AKS cluster ID when enabled."
   value       = var.enable_aks ? module.aks[0].id : null

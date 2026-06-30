@@ -84,6 +84,16 @@ output "managed_grafana_id" {
   value       = azurerm_dashboard_grafana.test.id
 }
 
+output "argocd_extension_id" {
+  description = "Azure Argo CD extension ID when enabled."
+  value       = var.enable_argocd_extension ? module.argocd_extension[0].id : null
+}
+
+output "argocd_hostname" {
+  description = "Test Argo CD public hostname."
+  value       = var.argocd_hostname
+}
+
 output "app_gateway_public_ip_address" {
   description = "Application Gateway public IP address when enabled."
   value       = var.enable_app_gateway_waf ? module.app_gateway_waf[0].public_ip_address : null

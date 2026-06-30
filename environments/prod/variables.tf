@@ -76,10 +76,28 @@ variable "alert_email" {
   default     = ""
 }
 
+variable "grafana_public_network_access_enabled" {
+  description = "Enable public network access for Azure Managed Grafana. Keep true while operators access it from browser sign-in."
+  type        = bool
+  default     = true
+}
+
+variable "grafana_admin_principal_ids" {
+  description = "Stable Entra principal object IDs granted Grafana Admin on the production Managed Grafana instance."
+  type        = set(string)
+  default     = ["351af7b8-31dd-4186-a7bc-c2f38a79d242"]
+}
+
 variable "key_vault_purge_protection_enabled" {
   description = "Enable purge protection for the production Key Vault."
   type        = bool
   default     = true
+}
+
+variable "key_vault_admin_principal_id" {
+  description = "Stable principal object ID receiving Key Vault Administrator for the production Key Vault."
+  type        = string
+  default     = "432eff13-75fb-4d83-940b-77963973b1d1"
 }
 
 variable "key_vault_soft_delete_retention_days" {

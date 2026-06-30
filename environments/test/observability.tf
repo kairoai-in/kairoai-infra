@@ -26,6 +26,31 @@ resource "azurerm_dashboard_grafana" "test" {
   tags = local.tags
 }
 
+data "azurerm_monitor_data_collection_rule" "aks_managed_prometheus" {
+  name                = "MSProm-${module.resource_group.location}-${local.names.aks}"
+  resource_group_name = module.resource_group.name
+
+  depends_on = [module.aks]
+}
+
+resource "azurerm_monitor_data_collection_rule_association" "aks_managed_prometheus" {
+  name                    = "ContainerInsightsMetricsExtension"
+  target_resource_id      = module.aks.id
+  data_collection_rule_id = data.azurerm_monitor_data_collection_rule.aks_managed_prometheus.id
+  description             = "Associates test AKS with the Managed Prometheus data collection rule."
+
+  depends_on = [
+    azurerm_monitor_workspace.test,
+    module.aks,
+  ]
+}
+
+resource "azurerm_role_assignment" "aks_prometheus_metrics_publisher" {
+  scope                = data.azurerm_monitor_data_collection_rule.aks_managed_prometheus.id
+  role_definition_name = "Monitoring Metrics Publisher"
+  principal_id         = module.aks.kubelet_identity_object_id
+}
+
 resource "azurerm_role_assignment" "grafana_monitoring_reader" {
   scope                = azurerm_monitor_workspace.test.id
   role_definition_name = "Monitoring Reader"
