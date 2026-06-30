@@ -32,8 +32,6 @@ locals {
     "private.postgres.database.azure.com",
     "privatelink.azurecr.io",
     "privatelink.blob.core.windows.net",
-    "privatelink.monitor.azure.com",
-    "privatelink.ods.opinsights.azure.com",
     "privatelink.postgres.database.azure.com",
     "privatelink.servicebus.windows.net",
     "privatelink.vaultcore.azure.net",
@@ -152,7 +150,7 @@ module "key_vault" {
   resource_group_name           = module.resource_group.name
   location                      = module.resource_group.location
   tenant_id                     = var.tenant_id
-  admin_principal_id            = data.azurerm_client_config.current.object_id
+  admin_principal_id            = var.key_vault_admin_principal_id
   purge_protection_enabled      = var.key_vault_purge_protection_enabled
   soft_delete_retention_days    = var.key_vault_soft_delete_retention_days
   public_network_access_enabled = var.public_network_access_enabled
@@ -263,6 +261,7 @@ module "app_gateway_waf" {
   subnet_id                  = module.networking.subnet_ids["snet-app-gateway"]
   min_capacity               = var.app_gateway_min_capacity
   max_capacity               = var.app_gateway_max_capacity
+  waf_mode                   = "Detection"
   log_analytics_workspace_id = module.monitor.log_analytics_workspace_id
   action_group_id            = azurerm_monitor_action_group.platform.id
   tags                       = local.tags

@@ -33,6 +33,35 @@ resource "azurerm_web_application_firewall_policy" "this" {
   location            = var.location
   tags                = var.tags
 
+  custom_rules {
+    name      = "AllowSignedGitHubWebhooks"
+    priority  = 50
+    rule_type = "MatchRule"
+    action    = "Allow"
+    enabled   = true
+
+    match_conditions {
+      match_variables {
+        variable_name = "RequestUri"
+      }
+
+      operator           = "Contains"
+      negation_condition = false
+      match_values       = ["/api/github/events"]
+    }
+
+    match_conditions {
+      match_variables {
+        variable_name = "RequestHeaders"
+        selector      = "x-hub-signature-256"
+      }
+
+      operator           = "Contains"
+      negation_condition = false
+      match_values       = ["sha256="]
+    }
+  }
+
   policy_settings {
     enabled                     = true
     mode                        = var.waf_mode
@@ -42,6 +71,27 @@ resource "azurerm_web_application_firewall_policy" "this" {
   }
 
   managed_rules {
+    exclusion {
+      match_variable          = "RequestCookieNames"
+      selector                = "kairoai_installation"
+      selector_match_operator = "Equals"
+
+      excluded_rule_set {
+        type    = "OWASP"
+        version = "3.2"
+
+        rule_group {
+          rule_group_name = "REQUEST-942-APPLICATION-ATTACK-SQLI"
+          excluded_rules = [
+            "942200",
+            "942260",
+            "942340",
+            "942370",
+          ]
+        }
+      }
+    }
+
     managed_rule_set {
       type    = "OWASP"
       version = "3.2"
