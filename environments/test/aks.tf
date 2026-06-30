@@ -20,11 +20,15 @@ module "aks" {
   log_analytics_workspace_id = module.monitor.log_analytics_workspace_id
   acr_id                     = data.azurerm_container_registry.hub.id
   key_vault_id               = module.key_vault.id
-  system_node_vm_size        = var.aks_system_node_vm_size
-  system_node_min_count      = var.aks_system_node_min_count
-  system_node_max_count      = var.aks_system_node_max_count
-  user_node_vm_size          = var.aks_user_node_vm_size
-  user_node_min_count        = var.aks_user_node_min_count
-  user_node_max_count        = var.aks_user_node_max_count
-  tags                       = local.tags
+  application_gateway_id     = var.enable_app_gateway_waf ? module.app_gateway_waf[0].id : null
+  application_gateway_subnet_id = (
+    var.enable_app_gateway_waf ? module.networking.subnet_ids["snet-app-gateway"] : null
+  )
+  system_node_vm_size   = var.aks_system_node_vm_size
+  system_node_min_count = var.aks_system_node_min_count
+  system_node_max_count = var.aks_system_node_max_count
+  user_node_vm_size     = var.aks_user_node_vm_size
+  user_node_min_count   = var.aks_user_node_min_count
+  user_node_max_count   = var.aks_user_node_max_count
+  tags                  = local.tags
 }

@@ -24,7 +24,7 @@ This file is the practical inventory for where KairoAI Azure resources live, why
 | Public DNS zone | `kairoai.in` | Live | Azure DNS zone for app/domain records. GoDaddy is the registrar, but DNS is delegated to Azure nameservers: `ns1-05.azure-dns.com`, `ns2-05.azure-dns.net`, `ns3-05.azure-dns.org`, `ns4-05.azure-dns.info`. |
 | Private DNS zones | Azure private DNS zones | Live | Shared private name resolution for PostgreSQL, ACR, Key Vault, Service Bus, Monitor, and Storage. |
 | ACR | `acrkairoaihubci` | Live | Shared container registry for service images across environments. |
-| Key Vault | `kv-kairoai-hub-ci` | Live | Shared hub secrets and future shared certificates. |
+| Key Vault | `kv-kairoai-hub-ci` | Live | Shared hub secrets and future shared certificates; private endpoint `pe-kv-kairoai-hub-ci` resolves to `10.10.2.4`. |
 | Log Analytics | `law-kairoai-hub-ci` | Live | Hub logging workspace. |
 | Front Door | `afd-kairoai-global` / `fde-kairoai-global-abbxdsduhdbbe5dy.z02.azurefd.net` | Live for prod/test | Global entry point in the required path: Internet -> Azure DNS -> Front Door -> App Gateway WAF -> AKS. `afd-kairoai-global` is the Front Door profile; `fde-...azurefd.net` is the Azure-generated endpoint hostname used by DNS records. |
 | Azure Firewall/Bastion | `afw-kairoai-hub-ci`, `afwp-kairoai-hub-ci`, `bas-kairoai-hub-ci` | Planned/deferred | Do not deploy now. Names and subnets are reserved, but Terraform does not currently deploy Firewall/Bastion resources. Deferred for cost and because centralized egress/private browser access are not required for the current demo. |
@@ -40,7 +40,7 @@ This file is the practical inventory for where KairoAI Azure resources live, why
 | App Gateway subnet | `snet-app-gateway` | Live | Dedicated subnet required by Application Gateway WAF. |
 | Private endpoints subnet | `snet-private-endpoints` | Live | Future private endpoints for platform services. |
 | PostgreSQL delegated subnet | `snet-postgres-delegated` | Live | Required VNet-injected PostgreSQL Flexible Server subnet. |
-| Test Key Vault | `kv-kairoai-test-ci` | Live | Test runtime secrets. |
+| Test Key Vault | `kv-kairoai-test-ci` | Live | Test runtime secrets; private endpoint `pe-kv-kairoai-test-ci` resolves to `10.20.13.4`. |
 | PostgreSQL Flexible Server | `psql-kairoai-test-ci` | Live | Application database; private networking enabled, public access disabled. |
 | PostgreSQL database | `kairoai` | Live | App database. |
 | Service Bus namespace | `sb-kairoai-test-ci` | Live | Async messaging for review jobs and analysis results. |
@@ -66,8 +66,8 @@ Production and prod-dr foundation resources are now created and verified with no
 
 | Scope | Planned Resources | Reason |
 | --- | --- | --- |
-| Prod primary | RG, VNet/subnets, hub peering, private DNS links, PostgreSQL Flexible Server, Key Vault, Service Bus, Monitor, Application Insights, AKS, App Gateway WAF, WAF policy, App Gateway diagnostics, Front Door, Azure DNS records, AI Services, and edge alerts are live; managed identities and policy assignments remain planned | Production deployment in Central India with high-cost runtime gates reviewed before apply. |
-| Prod DR | DR RG, DR VNet/subnets, hub peering, private DNS links, Key Vault, monitoring are live; optional gated PostgreSQL, Service Bus, warm standby AKS, App Gateway WAF, AI Foundry, managed identities, and policy assignments remain planned | Demo target is DR Level 2 in South India, upgradeable without redesign. |
+| Prod primary | RG, VNet/subnets, hub peering, private DNS links, PostgreSQL Flexible Server, Key Vault and its `10.30.13.4` private endpoint, Service Bus, Monitor, Application Insights, AKS, App Gateway WAF, WAF policy, App Gateway diagnostics, Front Door, Azure DNS records, AI Services, and edge alerts are live; managed identities and policy assignments remain planned | Production deployment in Central India with high-cost runtime gates reviewed before apply. |
+| Prod DR | DR RG, DR VNet/subnets, hub peering, private DNS links, Key Vault and its `10.40.13.4` private endpoint, and monitoring are live; optional gated PostgreSQL, Service Bus, warm standby AKS, App Gateway WAF, AI Foundry, managed identities, and policy assignments remain planned | Demo target is DR Level 2 in South India, upgradeable without redesign. |
 
 ## Saved Architecture Plans
 

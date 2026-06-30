@@ -233,6 +233,18 @@ module "front_door" {
       origin_host_name   = data.terraform_remote_state.test.outputs.app_gateway_public_ip_address
       origin_host_header = "test-api.kairoai.in"
     }
+    test-argocd = {
+      host_name          = "test-argocd.kairoai.in"
+      origin_host_name   = data.terraform_remote_state.test.outputs.app_gateway_public_ip_address
+      origin_host_header = "test-argocd.kairoai.in"
+      health_probe_path  = "/healthz"
+    }
+    prod-argocd = {
+      host_name          = "prod-argocd.kairoai.in"
+      origin_host_name   = data.terraform_remote_state.prod.outputs.app_gateway_public_ip_address
+      origin_host_header = "prod-argocd.kairoai.in"
+      health_probe_path  = "/healthz"
+    }
   }
   log_analytics_workspace_id = azurerm_log_analytics_workspace.hub.id
   action_group_id            = azurerm_monitor_action_group.hub.id
@@ -251,9 +263,11 @@ resource "azurerm_dns_a_record" "front_door_apex" {
 
 resource "azurerm_dns_cname_record" "front_door_subdomains" {
   for_each = {
-    api      = "api"
-    test     = "test"
-    test-api = "test-api"
+    api         = "api"
+    test        = "test"
+    test-api    = "test-api"
+    test-argocd = "test-argocd"
+    prod-argocd = "prod-argocd"
   }
 
   name                = each.value
@@ -266,10 +280,12 @@ resource "azurerm_dns_cname_record" "front_door_subdomains" {
 
 resource "azurerm_dns_txt_record" "front_door_domain_validation" {
   for_each = {
-    "_dnsauth"          = module.front_door.custom_domain_validation_tokens["prod-dashboard"]
-    "_dnsauth.api"      = module.front_door.custom_domain_validation_tokens["prod-api"]
-    "_dnsauth.test"     = module.front_door.custom_domain_validation_tokens["test-dashboard"]
-    "_dnsauth.test-api" = module.front_door.custom_domain_validation_tokens["test-api"]
+    "_dnsauth"             = module.front_door.custom_domain_validation_tokens["prod-dashboard"]
+    "_dnsauth.api"         = module.front_door.custom_domain_validation_tokens["prod-api"]
+    "_dnsauth.test"        = module.front_door.custom_domain_validation_tokens["test-dashboard"]
+    "_dnsauth.test-api"    = module.front_door.custom_domain_validation_tokens["test-api"]
+    "_dnsauth.test-argocd" = module.front_door.custom_domain_validation_tokens["test-argocd"]
+    "_dnsauth.prod-argocd" = module.front_door.custom_domain_validation_tokens["prod-argocd"]
   }
 
   name                = each.key

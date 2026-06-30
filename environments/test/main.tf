@@ -32,8 +32,6 @@ locals {
     "private.postgres.database.azure.com",
     "privatelink.azurecr.io",
     "privatelink.blob.core.windows.net",
-    "privatelink.monitor.azure.com",
-    "privatelink.ods.opinsights.azure.com",
     "privatelink.postgres.database.azure.com",
     "privatelink.servicebus.windows.net",
     "privatelink.vaultcore.azure.net",
